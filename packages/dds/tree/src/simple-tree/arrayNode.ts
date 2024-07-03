@@ -33,14 +33,14 @@ import {
 	type ImplicitAllowedTypes,
 	type InsertableTreeNodeFromImplicitAllowedTypes,
 	type TreeNodeFromImplicitAllowedTypes,
-	type TreeNodeSchemaClass,
 	type WithType,
 	type TreeNodeSchema,
 	typeNameSymbol,
 	normalizeFieldSchema,
+	type TreeNodeSchemaClassOptionalConstructor,
 } from "./schemaTypes.js";
 import { mapTreeFromNodeData } from "./toMapTree.js";
-import { type TreeNode, TreeNodeValid } from "./types.js";
+import { type TreeNode, TreeNodeValid, type InternalTreeNode } from "./types.js";
 import { fail } from "../util/index.js";
 import { getFlexSchema } from "./toFlexSchema.js";
 import { UsageError } from "@fluidframework/telemetry-utils/internal";
@@ -665,6 +665,15 @@ abstract class CustomArrayNodeBase<const T extends ImplicitAllowedTypes>
 
 	public static readonly kind = NodeKind.Array;
 
+	public constructor(
+		input?:
+			| undefined
+			| Iterable<InsertableTreeNodeFromImplicitAllowedTypes<T>>
+			| InternalTreeNode,
+	) {
+		super(input ?? []);
+	}
+
 	protected abstract get simpleSchema(): T;
 
 	#cursorFromFieldData(value: Insertable<T>): ITreeCursorSynchronous {
@@ -866,7 +875,7 @@ export function arraySchema<
 	info: T,
 	implicitlyConstructable: ImplicitlyConstructable,
 	customizable: boolean,
-): TreeNodeSchemaClass<
+): TreeNodeSchemaClassOptionalConstructor<
 	TName,
 	NodeKind.Array,
 	TreeArrayNode<T> & WithType<TName>,
@@ -878,7 +887,26 @@ export function arraySchema<
 
 	// This class returns a proxy from its constructor to handle numeric indexing.
 	// Alternatively it could extend a normal class which gets tons of numeric properties added.
-	class schema extends CustomArrayNodeBase<T> {
+	class schema extends CustomArrayNodeBase<T> implements TreeArrayNode<T>, WithType<TName> {
+		// public static override create<
+		// 	TThis extends new (
+		// 		...args: any[]
+		// 	) => InstanceType<TThis> & TreeArrayNode<T> & WithType<TName>,
+		// >(this: TThis, input?: ConstructorParameters<TThis>): InstanceType<TThis> {
+		// 	return new this(input);
+		// }
+
+		public static create<
+			This extends new (
+				item: Iterable<InsertableTreeNodeFromImplicitAllowedTypes<T>> | InternalTreeNode,
+			) => InstanceType<This> & TreeArrayNode<T> & WithType<TName>,
+		>(
+			this: This,
+			data?: Iterable<InsertableTreeNodeFromImplicitAllowedTypes<T>> | undefined,
+		): InstanceType<This> & TreeArrayNode<T> & WithType<TName> {
+			return new this(data ?? []);
+		}
+
 		public static override prepareInstance<T2>(
 			this: typeof TreeNodeValid<T2>,
 			instance: TreeNodeValid<T2>,

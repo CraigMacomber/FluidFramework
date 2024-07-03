@@ -11,6 +11,7 @@ import {
 	type TreeNodeSchema,
 	type WithType,
 	typeNameSymbol,
+	type TreeNodeSchemaClass,
 } from "./schemaTypes.js";
 import {
 	type FlexTreeNode,
@@ -126,7 +127,7 @@ export abstract class TreeNode implements WithType {
 		}
 
 		assert("prototype" in schema, 0x98a /* expected class based schema */);
-		return inPrototypeChain(schema.prototype, this.prototype);
+		return inPrototypeChain((schema as TreeNodeSchemaClass).prototype, this.prototype);
 	}
 
 	protected constructor() {

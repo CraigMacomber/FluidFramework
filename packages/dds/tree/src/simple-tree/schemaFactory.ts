@@ -38,8 +38,8 @@ import {
 	createFieldSchema,
 	type DefaultProvider,
 	getDefaultProvider,
-	type TreeNodeSchemaNonClassOptionalCreate,
 	type TreeNodeSchemaClassOptionalConstructor,
+	type TreeNodeSchemaOptionalCreate,
 } from "./schemaTypes.js";
 import { type TreeArrayNode, arraySchema } from "./arrayNode.js";
 import { isFluidHandle } from "@fluidframework/runtime-utils/internal";
@@ -285,7 +285,7 @@ export class SchemaFactory<
 	 */
 	public map<const T extends TreeNodeSchema | readonly TreeNodeSchema[]>(
 		allowedTypes: T,
-	): TreeNodeSchemaNonClassOptionalCreate<
+	): TreeNodeSchemaOptionalCreate<
 		ScopedSchemaName<TScope, `Map<${string}>`>,
 		NodeKind.Map,
 		TreeMapNode<T> & WithType<ScopedSchemaName<TScope, `Map<${string}>`>>,
@@ -328,7 +328,7 @@ export class SchemaFactory<
 				true,
 				T
 		  >
-		| TreeNodeSchemaNonClassOptionalCreate<
+		| TreeNodeSchemaOptionalCreate<
 				string,
 				NodeKind.Map,
 				TreeMapNode<T>,
@@ -356,15 +356,7 @@ export class SchemaFactory<
 				Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
 				true,
 				T
-			> &
-				TreeNodeSchemaNonClassOptionalCreate<
-					string,
-					NodeKind.Map,
-					TreeMapNode<T>,
-					Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
-					true,
-					T
-				>;
+			>;
 		}
 		return this.namedMap(nameOrAllowedTypes as TName, allowedTypes, true, true);
 	}
@@ -390,15 +382,7 @@ export class SchemaFactory<
 		Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
 		ImplicitlyConstructable,
 		T
-	> &
-		TreeNodeSchemaNonClassOptionalCreate<
-			ScopedSchemaName<TScope, Name>,
-			NodeKind.Map,
-			TreeMapNode<T> & WithType<ScopedSchemaName<TScope, Name>>,
-			Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
-			ImplicitlyConstructable,
-			T
-		> {
+	> {
 		return mapSchema(
 			this.scoped(name),
 			allowedTypes,
@@ -522,7 +506,7 @@ export class SchemaFactory<
 		allowedTypes: T,
 		customizable: boolean,
 		implicitlyConstructable: ImplicitlyConstructable,
-	): TreeNodeSchemaClass<
+	): TreeNodeSchemaClassOptionalConstructor<
 		ScopedSchemaName<TScope, Name>,
 		NodeKind.Array,
 		TreeArrayNode<T> & WithType<ScopedSchemaName<TScope, string>>,

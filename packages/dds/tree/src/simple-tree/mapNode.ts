@@ -30,7 +30,6 @@ import {
 	type TreeNodeFromImplicitAllowedTypes,
 	typeNameSymbol,
 	type TreeNodeSchemaClassOptionalConstructor,
-	type TreeNodeSchemaNonClassOptionalCreate,
 } from "./schemaTypes.js";
 import { mapTreeFromNodeData } from "./toMapTree.js";
 import { type TreeNode, TreeNodeValid, type InternalTreeNode } from "./types.js";
@@ -132,15 +131,6 @@ abstract class CustomMapNodeBase<const T extends ImplicitAllowedTypes> extends T
 > {
 	public static readonly kind = NodeKind.Map;
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public static create<TThis extends new (...args: any) => any>(
-		this: TThis,
-		input?: ConstructorParameters<TThis>,
-	): InstanceType<TThis> {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return new this(input);
-	}
-
 	public constructor(
 		input?:
 			| undefined
@@ -240,6 +230,19 @@ export function mapSchema<
 	let flexSchema: FlexMapNodeSchema;
 
 	class schema extends CustomMapNodeBase<T> implements TreeMapNode<T> {
+		public static create<
+			This extends new (
+				item:
+					| Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]>
+					| InternalTreeNode,
+			) => InstanceType<This> & TreeMapNode<T> & WithType<TName>,
+		>(
+			this: This,
+			data?: Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
+		): InstanceType<This> & TreeMapNode<T> & WithType<TName> {
+			return new this(data ?? []);
+		}
+
 		public static override prepareInstance<T2>(
 			this: typeof TreeNodeValid<T2>,
 			instance: TreeNodeValid<T2>,
@@ -287,15 +290,7 @@ export function mapSchema<
 		Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
 		ImplicitlyConstructable,
 		T
-	> &
-		TreeNodeSchemaNonClassOptionalCreate<
-			TName,
-			NodeKind.Map,
-			TreeMapNode<T> & WithType<TName>,
-			Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
-			ImplicitlyConstructable,
-			T
-		> = schema;
+	> = schema;
 	return schemaErased;
 }
 

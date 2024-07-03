@@ -29,26 +29,7 @@ import type { InsertableContent } from "./proxies.js";
  * Captures the schema both as runtime data and compile time type information.
  * @sealed @public
  */
-export type TreeNodeSchema<
-	Name extends string = string,
-	Kind extends NodeKind = NodeKind,
-	TNode = unknown,
-	TBuild = never,
-	ImplicitlyConstructable extends boolean = boolean,
-	Info = unknown,
-> =
-	| TreeNodeSchemaClass<Name, Kind, TNode, TBuild, ImplicitlyConstructable, Info>
-	| TreeNodeSchemaNonClass<Name, Kind, TNode, TBuild, ImplicitlyConstructable, Info>;
-
-/**
- * Schema which is not a class.
- * @remarks
- * This is used for schema which cannot have their instances constructed using constructors, like leaf schema.
- * @privateRemarks
- * Non-class based schema can have issues with recursive types due to https://github.com/microsoft/TypeScript/issues/55832.
- * @sealed @public
- */
-export interface TreeNodeSchemaNonClass<
+export interface TreeNodeSchema<
 	out Name extends string = string,
 	out Kind extends NodeKind = NodeKind,
 	out TNode = unknown,
@@ -56,29 +37,29 @@ export interface TreeNodeSchemaNonClass<
 	out ImplicitlyConstructable extends boolean = boolean,
 	out Info = unknown,
 > extends TreeNodeSchemaCore<Name, Kind, ImplicitlyConstructable, Info> {
-	create(data: TInsertable): TNode;
+	/**
+	 * Create an instance of the node defined by this schema.
+	 * @remarks
+	 * This is provided as an alternative construction which all schema can provide.
+	 * Class base schema can use `new` to invoke the constructor, but this does not work for other cases like leaf schema.
+	 * This also provides a simpler type as unlike the constructor, this does not need to accommodate {@link InternalTreeNode}.
+	 */
+	create(data: TInsertable): Unhydrated<TNode>;
 }
 
 /**
- * {@link TreeNodeSchemaNonClass} but with an optional create parameter.
+ * {@link TreeNodeSchema} but with an optional create parameter.
  * @sealed @public
  */
-export interface TreeNodeSchemaNonClassOptionalCreate<
+export interface TreeNodeSchemaOptionalCreate<
 	out Name extends string = string,
 	out Kind extends NodeKind = NodeKind,
 	out TNode = unknown,
 	in TInsertable = never,
 	out ImplicitlyConstructable extends boolean = boolean,
 	out Info = unknown,
-> extends TreeNodeSchemaNonClass<
-		Name,
-		Kind,
-		TNode,
-		TInsertable,
-		ImplicitlyConstructable,
-		Info
-	> {
-	create(data?: TInsertable): TNode;
+> extends TreeNodeSchema<Name, Kind, TNode, TInsertable, ImplicitlyConstructable, Info> {
+	create(data?: TInsertable): Unhydrated<TNode>;
 }
 
 /**
@@ -98,16 +79,21 @@ export interface TreeNodeSchemaClass<
 	in TInsertable = never,
 	out ImplicitlyConstructable extends boolean = boolean,
 	out Info = unknown,
-> extends TreeNodeSchemaCore<Name, Kind, ImplicitlyConstructable, Info> {
+> extends TreeNodeSchema<Name, Kind, TNode, TInsertable, ImplicitlyConstructable, Info> {
 	/**
 	 * Constructs an {@link Unhydrated} node with this schema.
 	 * @sealed
 	 */
 	new (data: TInsertable | InternalTreeNode): Unhydrated<TNode>;
+	// create<
+	// 	This extends new (
+	// 		item: TInsertable | InternalTreeNode,
+	// 	) => InstanceType<This> & TNode,
+	// >(this: This, data: TInsertable): InstanceType<This> & TNode;
 }
 
 /**
- * {@link TreeNodeSchemaNonClass} but with an optional constructor parameter.
+ * {@link TreeNodeSchema} but with an optional constructor parameter.
  * @sealed @public
  */
 export interface TreeNodeSchemaClassOptionalConstructor<
@@ -123,6 +109,10 @@ export interface TreeNodeSchemaClassOptionalConstructor<
 	 * @sealed
 	 */
 	new (data?: TInsertable | InternalTreeNode): Unhydrated<TNode>;
+	create<This extends new (...args: any[]) => InstanceType<This> & TNode>(
+		this: This,
+		data?: TInsertable,
+	): InstanceType<This> & TNode;
 }
 
 /**

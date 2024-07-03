@@ -117,7 +117,7 @@ export function createFieldSchemaUnsafe<
  * @public
  */
 export type ValidateRecursiveSchema<
-	// Recursive types should always be using TreeNodeSchemaClass (not TreeNodeSchemaNonClass) as thats part of the requirements for the type to work across compilation boundaries correctly.
+	// Recursive types should always be using TreeNodeSchemaClass (not just TreeNodeSchema) as thats part of the requirements for the type to work across compilation boundaries correctly.
 	T extends TreeNodeSchemaClass<
 		// Name: This validator places no restrictions on the name other than that it's a string (as required by TreeNodeSchemaClass).
 		string,

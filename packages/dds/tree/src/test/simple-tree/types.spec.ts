@@ -128,6 +128,18 @@ describe("simple-tree types", () => {
 				public static readonly info = numberSchema;
 				public static readonly implicitlyConstructable: false;
 
+				/**
+				 * {@inheritdoc TreeNodeSchema.create}
+				 * @privateRemarks
+				 * Derived classes can override this to make argument optional.
+				 */
+				public static create<TThis extends new (...args: any[]) => InstanceType<TThis>>(
+					this: TThis,
+					input?: ConstructorParameters<TThis>,
+				): InstanceType<TThis> {
+					return new this(input);
+				}
+
 				public static override prepareInstance<T2>(
 					this: typeof TreeNodeValid<T2>,
 					instance: TreeNodeValid<T2>,

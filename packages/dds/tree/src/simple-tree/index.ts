@@ -17,7 +17,6 @@ export {
 	type NodeFromSchema,
 	NodeKind,
 	type TreeNodeSchemaClass,
-	type TreeNodeSchemaNonClass,
 	type TreeNodeSchemaCore,
 	type ImplicitFieldSchema,
 	type TreeFieldFromImplicitField,
@@ -38,7 +37,7 @@ export {
 	normalizeFieldSchema,
 	type ApplyKind,
 	type TreeNodeSchemaClassOptionalConstructor,
-	type TreeNodeSchemaNonClassOptionalCreate,
+	type TreeNodeSchemaOptionalCreate,
 } from "./schemaTypes.js";
 export { SchemaFactory, type ScopedSchemaName } from "./schemaFactory.js";
 export { getFlexNode } from "./proxyBinding.js";

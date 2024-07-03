@@ -15,7 +15,7 @@ import {
 } from "../feature-libraries/index.js";
 
 import { setFlexSchemaFromClassSchema } from "./schemaCaching.js";
-import { NodeKind, type TreeNodeSchema, type TreeNodeSchemaNonClass } from "./schemaTypes.js";
+import { NodeKind, type TreeNodeSchema } from "./schemaTypes.js";
 
 type UnbrandedName<T extends FlexLeafNodeSchema> = T["name"] extends TreeNodeSchemaIdentifier<
 	infer Name extends string
@@ -33,7 +33,7 @@ type UnbrandedName<T extends FlexLeafNodeSchema> = T["name"] extends TreeNodeSch
  * This class refers to the underlying flex tree schema in its constructor, so this class can't be included in the package API.
  */
 class LeafNodeSchema<T extends FlexLeafNodeSchema>
-	implements TreeNodeSchemaNonClass<UnbrandedName<T>, NodeKind.Leaf, TreeValue<T["info"]>>
+	implements TreeNodeSchema<UnbrandedName<T>, NodeKind.Leaf, TreeValue<T["info"]>>
 {
 	public readonly identifier: UnbrandedName<T>;
 	public readonly kind = NodeKind.Leaf;

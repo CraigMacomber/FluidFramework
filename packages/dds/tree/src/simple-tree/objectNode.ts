@@ -311,6 +311,18 @@ export function objectSchema<
 	let flexSchema: FlexObjectNodeSchema;
 
 	class CustomObjectNode extends CustomObjectNodeBase<T> {
+		/**
+		 * {@inheritdoc TreeNodeSchema.create}
+		 * @privateRemarks
+		 * Derived classes can override this to make argument optional.
+		 */
+		public static create<TThis extends new (...args: any[]) => InstanceType<TThis>>(
+			this: TThis,
+			input?: ConstructorParameters<TThis>,
+		): InstanceType<TThis> {
+			return new this(input);
+		}
+
 		public static readonly fields: ReadonlyMap<string, FieldSchema> = new Map(
 			[...flexKeyMap].map(([key, value]) => [key as string, value.schema]),
 		);
@@ -406,7 +418,9 @@ export function objectSchema<
 	return CustomObjectNode as typeof CustomObjectNode &
 		(new (
 			input: InsertableObjectFromSchemaRecord<T> | InternalTreeNode,
-		) => TreeObjectNode<T, TName>);
+		) => TreeObjectNode<T, TName>) & {
+			create(data: InsertableObjectFromSchemaRecord<T>): TreeObjectNode<T, TName>;
+		};
 }
 
 const targetToProxy: WeakMap<object, TreeNode> = new WeakMap();

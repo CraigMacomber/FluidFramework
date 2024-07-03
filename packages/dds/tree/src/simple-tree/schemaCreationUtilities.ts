@@ -54,7 +54,8 @@ export function singletonSchema<TScope extends string, TName extends string | nu
 		object & InsertableObjectFromSchemaRecord<EmptyObject>,
 		true
 	> &
-		(new () => NodeType) = SingletonSchema;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(new () => NodeType) = SingletonSchema as any;
 
 	return toReturn;
 }
