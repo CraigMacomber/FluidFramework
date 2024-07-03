@@ -38,6 +38,8 @@ import {
 	createFieldSchema,
 	type DefaultProvider,
 	getDefaultProvider,
+	type TreeNodeSchemaNonClassOptionalCreate,
+	type TreeNodeSchemaClassOptionalConstructor,
 } from "./schemaTypes.js";
 import { type TreeArrayNode, arraySchema } from "./arrayNode.js";
 import { isFluidHandle } from "@fluidframework/runtime-utils/internal";
@@ -283,11 +285,11 @@ export class SchemaFactory<
 	 */
 	public map<const T extends TreeNodeSchema | readonly TreeNodeSchema[]>(
 		allowedTypes: T,
-	): TreeNodeSchema<
+	): TreeNodeSchemaNonClassOptionalCreate<
 		ScopedSchemaName<TScope, `Map<${string}>`>,
 		NodeKind.Map,
 		TreeMapNode<T> & WithType<ScopedSchemaName<TScope, `Map<${string}>`>>,
-		Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]>,
+		Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
 		true,
 		T
 	>;
@@ -305,11 +307,11 @@ export class SchemaFactory<
 	public map<Name extends TName, const T extends ImplicitAllowedTypes>(
 		name: Name,
 		allowedTypes: T,
-	): TreeNodeSchemaClass<
+	): TreeNodeSchemaClassOptionalConstructor<
 		ScopedSchemaName<TScope, Name>,
 		NodeKind.Map,
 		TreeMapNode<T> & WithType<ScopedSchemaName<TScope, Name>>,
-		Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]>,
+		Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
 		true,
 		T
 	>;
@@ -317,14 +319,23 @@ export class SchemaFactory<
 	public map<const T extends ImplicitAllowedTypes>(
 		nameOrAllowedTypes: TName | ((T & TreeNodeSchema) | readonly TreeNodeSchema[]),
 		allowedTypes?: T,
-	): TreeNodeSchema<
-		string,
-		NodeKind.Map,
-		TreeMapNode<T>,
-		Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]>,
-		true,
-		T
-	> {
+	): // These two types should be intersected instead of unioned, however TypeScript incorrectly rejects it (claims the first overload is not compatible).
+		| TreeNodeSchemaClassOptionalConstructor<
+				string,
+				NodeKind.Map,
+				TreeMapNode<T>,
+				Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
+				true,
+				T
+		  >
+		| TreeNodeSchemaNonClassOptionalCreate<
+				string,
+				NodeKind.Map,
+				TreeMapNode<T>,
+				Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
+				true,
+				T
+		  > {
 		if (allowedTypes === undefined) {
 			const types = nameOrAllowedTypes as (T & TreeNodeSchema) | readonly TreeNodeSchema[];
 			const fullName = structuralName("Map", types);
@@ -338,14 +349,22 @@ export class SchemaFactory<
 						false,
 						true,
 					) as TreeNodeSchema,
-			) as TreeNodeSchemaClass<
+			) as TreeNodeSchemaClassOptionalConstructor<
 				string,
 				NodeKind.Map,
 				TreeMapNode<T>,
-				Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]>,
+				Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
 				true,
 				T
-			>;
+			> &
+				TreeNodeSchemaNonClassOptionalCreate<
+					string,
+					NodeKind.Map,
+					TreeMapNode<T>,
+					Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
+					true,
+					T
+				>;
 		}
 		return this.namedMap(nameOrAllowedTypes as TName, allowedTypes, true, true);
 	}
@@ -364,14 +383,22 @@ export class SchemaFactory<
 		allowedTypes: T,
 		customizable: boolean,
 		implicitlyConstructable: ImplicitlyConstructable,
-	): TreeNodeSchemaClass<
+	): TreeNodeSchemaClassOptionalConstructor<
 		ScopedSchemaName<TScope, Name>,
 		NodeKind.Map,
 		TreeMapNode<T> & WithType<ScopedSchemaName<TScope, Name>>,
-		Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]>,
+		Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
 		ImplicitlyConstructable,
 		T
-	> {
+	> &
+		TreeNodeSchemaNonClassOptionalCreate<
+			ScopedSchemaName<TScope, Name>,
+			NodeKind.Map,
+			TreeMapNode<T> & WithType<ScopedSchemaName<TScope, Name>>,
+			Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
+			ImplicitlyConstructable,
+			T
+		> {
 		return mapSchema(
 			this.scoped(name),
 			allowedTypes,

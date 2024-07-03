@@ -37,6 +37,8 @@ export {
 	type FieldProps,
 	normalizeFieldSchema,
 	type ApplyKind,
+	type TreeNodeSchemaClassOptionalConstructor,
+	type TreeNodeSchemaNonClassOptionalCreate,
 } from "./schemaTypes.js";
 export { SchemaFactory, type ScopedSchemaName } from "./schemaFactory.js";
 export { getFlexNode } from "./proxyBinding.js";

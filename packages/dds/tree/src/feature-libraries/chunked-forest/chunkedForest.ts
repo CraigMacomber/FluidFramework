@@ -58,7 +58,7 @@ export class ChunkedForest implements IEditableForest {
 	 * @param roots - dummy node above the root under which detached fields are stored. All content of the forest is reachable from this.
 	 * @param schema - schema which all content in this forest is assumed to comply with.
 	 * @param chunker - Chunking policy. TODO: dispose of this when forest is disposed.
-	 * @param anchors - anchorSet used to track location in this forest across changes. Callers of applyDelta must ensure this is updated accordingly.
+	 * @param anchors - anchorSet used to track location in this forest across changes. Users of acquireVisitor must ensure this is updated accordingly.
 	 */
 	public constructor(
 		public roots: BasicChunk,

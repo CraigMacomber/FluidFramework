@@ -60,6 +60,28 @@ export interface TreeNodeSchemaNonClass<
 }
 
 /**
+ * {@link TreeNodeSchemaNonClass} but with an optional create parameter.
+ * @sealed @public
+ */
+export interface TreeNodeSchemaNonClassOptionalCreate<
+	out Name extends string = string,
+	out Kind extends NodeKind = NodeKind,
+	out TNode = unknown,
+	in TInsertable = never,
+	out ImplicitlyConstructable extends boolean = boolean,
+	out Info = unknown,
+> extends TreeNodeSchemaNonClass<
+		Name,
+		Kind,
+		TNode,
+		TInsertable,
+		ImplicitlyConstructable,
+		Info
+	> {
+	create(data?: TInsertable): TNode;
+}
+
+/**
  * Tree node schema which is implemented using a class.
  * @remarks
  * Instances of this class are nodes in the tree.
@@ -79,12 +101,28 @@ export interface TreeNodeSchemaClass<
 > extends TreeNodeSchemaCore<Name, Kind, ImplicitlyConstructable, Info> {
 	/**
 	 * Constructs an {@link Unhydrated} node with this schema.
-	 * @remarks
-	 * This constructor is also used internally to construct hydrated nodes with a different parameter type.
-	 * Therefor overriding this constructor is not type-safe and is not supported.
 	 * @sealed
 	 */
 	new (data: TInsertable | InternalTreeNode): Unhydrated<TNode>;
+}
+
+/**
+ * {@link TreeNodeSchemaNonClass} but with an optional constructor parameter.
+ * @sealed @public
+ */
+export interface TreeNodeSchemaClassOptionalConstructor<
+	out Name extends string = string,
+	out Kind extends NodeKind = NodeKind,
+	out TNode = unknown,
+	in TInsertable = never,
+	out ImplicitlyConstructable extends boolean = boolean,
+	out Info = unknown,
+> extends TreeNodeSchemaClass<Name, Kind, TNode, TInsertable, ImplicitlyConstructable, Info> {
+	/**
+	 * Constructs an {@link Unhydrated} node with this schema.
+	 * @sealed
+	 */
+	new (data?: TInsertable | InternalTreeNode): Unhydrated<TNode>;
 }
 
 /**

@@ -33,6 +33,8 @@ export type {
 	InsertableTypedNodeUnsafe,
 	NodeBuilderDataUnsafe,
 	NodeFromSchemaUnsafe,
+	TreeNodeSchemaClassOptionalConstructor,
+	TreeNodeSchemaNonClassOptionalCreate,
 } from "./simple-tree/index.js";
 export type { FlexList, FlexListToUnion, ExtractItemType } from "./feature-libraries/index.js";
 

@@ -25,14 +25,15 @@ import {
 	NodeKind,
 	type ImplicitAllowedTypes,
 	type InsertableTreeNodeFromImplicitAllowedTypes,
-	type TreeNodeSchemaClass,
 	type WithType,
 	type TreeNodeSchema,
 	type TreeNodeFromImplicitAllowedTypes,
 	typeNameSymbol,
+	type TreeNodeSchemaClassOptionalConstructor,
+	type TreeNodeSchemaNonClassOptionalCreate,
 } from "./schemaTypes.js";
 import { mapTreeFromNodeData } from "./toMapTree.js";
-import { type TreeNode, TreeNodeValid } from "./types.js";
+import { type TreeNode, TreeNodeValid, type InternalTreeNode } from "./types.js";
 import { getFlexSchema } from "./toFlexSchema.js";
 import { UsageError } from "@fluidframework/telemetry-utils/internal";
 
@@ -130,6 +131,24 @@ abstract class CustomMapNodeBase<const T extends ImplicitAllowedTypes> extends T
 	Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]>
 > {
 	public static readonly kind = NodeKind.Map;
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public static create<TThis extends new (...args: any) => any>(
+		this: TThis,
+		input?: ConstructorParameters<TThis>,
+	): InstanceType<TThis> {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return new this(input);
+	}
+
+	public constructor(
+		input?:
+			| undefined
+			| Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]>
+			| InternalTreeNode,
+	) {
+		super(input ?? []);
+	}
 
 	public [Symbol.iterator](): IterableIterator<[string, TreeNodeFromImplicitAllowedTypes<T>]> {
 		return this.entries();
@@ -261,14 +280,22 @@ export function mapSchema<
 			return identifier;
 		}
 	}
-	const schemaErased: TreeNodeSchemaClass<
+	const schemaErased: TreeNodeSchemaClassOptionalConstructor<
 		TName,
 		NodeKind.Map,
 		TreeMapNode<T> & WithType<TName>,
-		Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]>,
+		Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
 		ImplicitlyConstructable,
 		T
-	> = schema;
+	> &
+		TreeNodeSchemaNonClassOptionalCreate<
+			TName,
+			NodeKind.Map,
+			TreeMapNode<T> & WithType<TName>,
+			Iterable<[string, InsertableTreeNodeFromImplicitAllowedTypes<T>]> | undefined,
+			ImplicitlyConstructable,
+			T
+		> = schema;
 	return schemaErased;
 }
 

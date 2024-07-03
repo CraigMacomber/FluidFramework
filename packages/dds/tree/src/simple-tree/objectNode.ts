@@ -460,23 +460,23 @@ function copyContent<T extends object>(typeName: TreeNodeSchemaIdentifier, conte
  * @privateRemarks
  * This is a candidate for being promoted to the public package API.
  */
-export interface ObjectNodeSchema<
+export type ObjectNodeSchema<
 	TName extends string = string,
 	T extends RestrictiveReadonlyRecord<string, ImplicitFieldSchema> = RestrictiveReadonlyRecord<
 		string,
 		ImplicitFieldSchema
 	>,
 	ImplicitlyConstructable extends boolean = boolean,
-> extends TreeNodeSchemaClass<
-		TName,
-		NodeKind.Object,
-		TreeObjectNode<T, TName>,
-		object & InsertableObjectFromSchemaRecord<T>,
-		ImplicitlyConstructable,
-		T
-	> {
+> = TreeNodeSchemaClass<
+	TName,
+	NodeKind.Object,
+	TreeObjectNode<T, TName>,
+	object & InsertableObjectFromSchemaRecord<T>,
+	ImplicitlyConstructable,
+	T
+> & {
 	readonly fields: ReadonlyMap<string, FieldSchema>;
-}
+};
 
 export const ObjectNodeSchema = {
 	// instanceof-based narrowing support for Javascript and TypeScript 5.3 or newer.

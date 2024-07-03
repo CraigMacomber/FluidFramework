@@ -63,4 +63,20 @@ describe("MapNode", () => {
 			assert.equal(Reflect.getPrototypeOf(node), Map.prototype);
 		});
 	});
+
+	it("constructor", () => {
+		class Schema extends schemaFactory.map("x", schemaFactory.number) {}
+		const _fromMap = new Schema(new Map());
+		const _fromIterable = new Schema([]);
+		const _fromUndefined = new Schema(undefined);
+		const _fromNothing = new Schema();
+	});
+
+	it("create", () => {
+		const Schema = schemaFactory.map(schemaFactory.number);
+		const _fromMap = Schema.create(new Map());
+		const _fromIterable = Schema.create([]);
+		const _fromUndefined = Schema.create(undefined);
+		const _fromNothing = Schema.create();
+	});
 });
