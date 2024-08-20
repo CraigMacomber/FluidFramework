@@ -44,6 +44,7 @@ import {
 	type TreeChangeEvents,
 	tryGetTreeNodeSchema,
 } from "../core/index.js";
+import { isObjectNodeSchema } from "../objectNodeTypes.js";
 
 /**
  * Provides various functions for analyzing {@link TreeNode}s.
@@ -98,10 +99,10 @@ export interface TreeNodeApi {
 	 * @returns A callback function which will deregister the event.
 	 * This callback should be called only once.
 	 */
-	on<K extends keyof TreeChangeEvents>(
-		node: TreeNode,
+	on<K extends keyof TreeChangeEvents<TNode>, TNode extends TreeNode>(
+		node: TNode,
 		eventName: K,
-		listener: TreeChangeEvents[K],
+		listener: TreeChangeEvents<TNode>[K],
 	): () => void;
 
 	/**
@@ -167,7 +168,38 @@ export const treeNodeApi: TreeNodeApi = {
 		eventName: K,
 		listener: TreeChangeEvents[K],
 	): Off {
-		return getKernel(node).on(eventName, listener);
+		const kernel = getKernel(node);
+		switch (eventName) {
+			case "nodeChanged": {
+				const nodeSchema = kernel.schema;
+				if (isObjectNodeSchema(nodeSchema)) {
+					return kernel.on("childrenChangedAfterBatch", ({ changedFields }) => {
+						const changedProperties = new Set(
+							Array.from(
+								changedFields,
+								(field) =>
+									nodeSchema.storedKeyToPropertyKey.get(field) ??
+									fail(`Could not find stored key '${field}' in schema.`),
+							),
+						);
+						listener({ changedProperties });
+					});
+				} else if (nodeSchema.kind === NodeKind.Array) {
+					return kernel.on("childrenChangedAfterBatch", () => {
+						listener({ changedProperties: undefined });
+					});
+				} else {
+					return kernel.on("childrenChangedAfterBatch", ({ changedFields }) => {
+						listener({ changedProperties: changedFields });
+					});
+				}
+			}
+			case "treeChanged": {
+				return kernel.on("subtreeChangedAfterBatch", () => listener({}));
+			}
+			default:
+				throw new UsageError(`No event named ${JSON.stringify(eventName)}.`);
+		}
 	},
 	status(node: TreeNode): TreeStatus {
 		return getKernel(node).getStatus();
@@ -245,7 +277,7 @@ export function tryGetSchema(value: unknown): undefined | TreeNodeSchema {
 			return booleanSchema;
 		case "object": {
 			if (isTreeNode(value)) {
-				// This case could be optimized, for example by placing the simple schema in a symbol on tree nodes.
+				// TODO: This case could be optimized, for example by placing the simple schema in a symbol on tree nodes.
 				return tryGetTreeNodeSchema(value);
 			}
 			if (value === null) {
