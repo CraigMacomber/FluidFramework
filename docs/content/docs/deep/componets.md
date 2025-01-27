@@ -23,6 +23,10 @@ When splitting documents/data across multiple containers, it is up to the applic
 If desired, an application can open a second copy of a container as a mechanism to have a separate "branch" (independent view which can have edits speculatively applied).
 This is currently not well optimized (for performance, memory use or ergonomics) and the functionality of this is rather limited (its impractical to use it to preview changes, and keep rebasing them to stay up to date before committing them for example).
 
+### DataStores and DataObjects
+
+TODO
+
 ### Distributed Data Structures (DDSes)
 
 Each container has a root DDS which can reference other DDSes.
@@ -39,6 +43,10 @@ Currently when loading a DDS, the entire DDS is downloaded and loaded into memor
 Some (but not all) Fluid service implementations support [upload blob](https://fluidframework.com/docs/api/v2/datastore-definitions/ifluiddatastoreruntime-interface#uploadblob-methodsignature).
 Blobs can be used to store immutable binary or string data can be accessed async via an `IFluidHandle`.
 These handles must be stored in DDSes to keep them around as they are included in Fluid's garbage collection.
+
+Blobs get no incrementally and cannot use handles to reference other content.
+Thus blobs are mainly useful for data that is never of very infrequently edited, and can be downloaded asynchronously and large enough that downloading it synchronously is undesired.
+User provided images are a common use of blobs.
 
 ### SharedTree Subtrees
 
