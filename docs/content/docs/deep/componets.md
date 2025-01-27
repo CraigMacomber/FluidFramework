@@ -2,22 +2,146 @@
 
 Fluid Framework powered applications have several ways to modularize their code and data into separate components.
 
-## Containers
+This document covers the ways a Fluid application's data can and sometimes has to be split up (across containers, DataStores/DataObjects, DDses and Shared Tree subtrees)
+and restrictions Fluid and its SharedTree implementation place on how the application code can be split into libraries.
+
+Additionally there is some coverage of recommended patterns which comply with these restrictions while delivering efficient and maintainable applications.
+
+## Splitting of Data
+
+### Containers
 
 We expect most Fluid applications to operate on a single container at a time and store all their persisted content in that container.
-It is however possible to use multiple containers, and some use-cases may require it.
-Specifically data which require different permissions, or to be stored in different locations, has to be split into separate containers.
+It is possible to use multiple containers (and even different services for different containers), and some use-cases may require it.
+Specifically data which require different permissions, or to be stored in different locations, has to be split in separate containers.
+
+> [!NOTE]
+> Theoretically an [additional service](#service) could be used to address the need for separate permissions in a single container, but this is currently not a well supported or recommended pattern.
 
 When splitting documents/data across multiple containers, it is up to the application to decide when to delete containers which are no longer needed.
-
-Each container is independent synchronization wise and there is no way to do anything atomically or even strongly ordered across multiple containers.
-
-Each container gets its own service client and thus separate op stream, storage and permissions.
 
 If desired, an application can open a second copy of a container as a mechanism to have a separate "branch" (independent view which can have edits speculatively applied).
 This is currently not well optimized (for performance, memory use or ergonomics) and the functionality of this is rather limited (its impractical to use it to preview changes, and keep rebasing them to stay up to date before committing them for example).
 
+### Distributed Data Structures (DDSes)
+
+Each container has a root DDS which can reference other DDSes.
+
+This means each container is a rooted directed multi-graph of DDSes.
+
+Fluid provides a garbage collector which delete DDSes which are not reachable from the root (after a delay).
+
+The application can decide when to load a given DDS within the container.
+Currently when loading a DDS, the entire DDS is downloaded and loaded into memory.
+
+### Blobs
+
+Some (but not all) Fluid service implementations support [upload blob](https://fluidframework.com/docs/api/v2/datastore-definitions/ifluiddatastoreruntime-interface#uploadblob-methodsignature).
+Blobs can be used to store immutable binary or string data can be accessed async via an `IFluidHandle`.
+These handles must be stored in DDSes to keep them around as they are included in Fluid's garbage collection.
+
+### SharedTree Subtrees
+
+Like all DDSes, all data withing a SharedTree is loaded together.
+
+> [!NOTE]
+> There is planned work [to enable partially loading a SharedTree](#partial).
+
+### Recommended Data Splitting Patterns
+
+We recommend that Fluid applications to operate on a single container at a time and store all their persisted content in that container.
+
+Due to lack of support on all services, and lack of a stable public API, Blobs are currently not recommended, however they are the lowest overhead way to handle large amounts of data, and can work around [service side size limits](https://learn.microsoft.com/en-us/azure/azure-fluid-relay/reference/service-limits) on Ops and on the container limits due to the summary size of all DDSes in the container.
+See [Optimizing large payloads in Fluid Framework](https://devblogs.microsoft.com/microsoft365dev/optimizing-large-payloads-in-fluid-framework/) for some additional details.
+
+This leaves the only dynamic data loading option at the DDS level: applications with large amounts of data which can not always be kept loaded can split the data up across multiple DDSes.
+Note that this does not help if the `@public` API surface is used and the DDSes are listed in the container schema since everything in `ContainerSchema.initialObjects` is loaded at once when opening the container.
+Instead the DDSes should be accessed via their handles, and they will not be loaded until `IFluidHandle.get()` is called.
+This does not get around the above mentioned size limits on summaries (which include all DDSes in the container),
+but can be used to improve loading time and reduce memory and bandwidth use when only working on part of a document.
+
+When possible however, it is recommended to use a single SharedTree DDS at the root of the container to organize the data.
+This is currently not quite possible using the `@public` API surface,
+but a similar experience can be had by putting all content in a SharedTree under the root SharedDirectory ContainerSchema implicitly creates.
+Having all the data in a single SharedTree allows for transactions, efficient (non-copying) moves and branching across all of the data in the container which would otherwise not be possible.
+Additionally future planned work to SharedTree will provide the greatest benefit to applications who structure their data in this way.
+
+When changing how data is organized within a container, if all the data being reorganized is within a single SharedTree,
+its schema evolution features can be used to perform the migration. TODO: link docs.
+
+For the general case or reorganizing data, which might span multiple DDSes TODO: how to use our migration tools to do it.
+
+Refactoring data stored across multiple containers is more difficult, and is up to the application (which is one reason such patterns are not recommended).
+
+## Bundled Code Organization
+
+This section is focused on FLuid applications running in a web browser: it may or may not generalize to other runtimes.
+
+A deployed Fluid application has to organize its code into bundles which are downloaded on the client.
+These bundles include code from the Fluid packages themselves as well as application specific code.
+
+### Dependencies, Versioning and Package Duplication
+
 An application using multiple containers can (though for bundle size generally shouldn't) use different versions or copies of the framework and its runtime for different containers.
+
+When a container is loaded, the application selects what version of the runtime is used (based on the package it uses to create the container)and provides the implementations of DDSes which will be used by that container.
+In the `@public` API surface thats done via `ContainerSchema`.
+In the "encapsulated" API, its done via the `NamedFluidDataStoreRegistryEntries` provided to `ContainerRuntime.loadRuntime`.
+
+If the application then run code which uses a separate copy of those packages (at either the same or different version), and mixes objects it gets passed from the container with objects and APIs from the second copy of the package, there may be problems.
+In many cases, mixing different copies of packages will cause TypeScript type errors.
+One source of these errors since instances of classes from on package may not be assignable to the other.
+There are additional source of such TypeScript errors, but also runtime issues which will not work even if they pass type checking.
+
+TODO: document which cases actually are supported.
+
+TODO: a bunch of stuff about loaders goes here
+
+
+#### Dynamically loading independently versioned/published code
+
+TODO: more details.
+
+#### Dynamically loading code within a single versioned/published context
+
+TODO: more details.
+
+#### Recommended Versioning and package Duplication
+
+It is recommended to not include multiple copies of Fluid client packages in a single application.
+Diamond dependencies should ensure all dependencies on a given package have compatible versions (there is at least one package version which satisfies them all) and a a single copy of each required package should be used.
+This avoids needless bundle size, and avoids the risk of issues due to different statics (like classes and symbols) between packages.
+
+Additionally all of the Fluid packages from a single release group (TODO: document how someone can know which packages these are and/or achieve/enforce this) should have the exact same version to minimize compatibility risk.
+
+This is easiest to achieve if the entire application has a single package which gets a single set of dependency versions selected and processed by a single run of a bundler.
+That does not preclude lazy loading parts of the application code (for example [webpack lazy loading](https://webpack.js.org/guides/lazy-loading/)). TODO: guidance on how to do this. Link examples.
+
+If using lazy loading, all bundles which contain SharedTree schema used in the same TreeConfiguration will need to be loaded before that tree can be accessed.
+
+> [!NOTE]
+> There is planned work [to enable partially loading a SharedTree schema](#lazyschema).
+
+
+If is really is necessary to violate this, and dynamically load code which is published independently of the app, this can be done with care.
+When possible the dynamically loaded code should not actually contain any Fluid packages, and just use the ones already loaded into the application. TODO: guidance on how to do this. Link examples.
+
+TODO: provide guidance on what to do if such dynamic loading is required, and it must contain actual Fluid packages. MAybe jusr refer to the sections above, as this isn't really a recommended scenario.
+
+## Source Code origination into Libraries
+
+## Polymorphic Child Patterns
+
+### Closed
+
+
+### Open
+
+
+#### Tree with Lazy code loading.
+
+
+------
 
 ## Data Objects and Distributed Data Structures (DDSes)
 
@@ -59,12 +183,22 @@ Future work (See SharedTree) may enable some DDSes to load subsets of their data
 SharedTree is designed to encourage componentization by subtree / schema.
 Typical usage is a given component defines its schema and logic which works with that schema.
 This schema/component is then referenced/depended on by its parent, adding its schema as a child.
+To access the SharedTree content, the entire schema (including the schema for all components which could possible exist in that tree) must be provided as part of the `TreeConfiguration` provided to the tree's `viewWith` method.
+Thus if lazy-loading of code for handling some subtrees is desired one of the following patterns can be used:
+
+1. the subtrees can be split into their own SharedTree with there own schema, and that whole DDS can be lazy-loaded.
+2. the schema can be separated from the rest of the component's code so the schema can be eager loaded and the rest lazy loaded.
+3. additional features which are not yet planned, such as "Lazy loading schema adapters" could be used if implemented.
 
 If an application is using a design pattern with a separate Model and View,
 it should be practical to either package the view code for the component alongside its model or separately.
 
 If the same data (same schema) needs to be handled differently in different parts of the application, that logic (anything which differs) should be separate from the schema.
 Anything which is always the same however can be included as methods or additional state declared as part of the schema class if this is helpful.
+This means that any invariants about the data which are dynamic (change over time) or contextual (depend on where in the tree a node currently is, and thus change if its moved)
+cannot be enforced at the schema level and instead need to be handled through other means
+(TODO: write and link document about maintaining data invariants in shared trees here).
+
 While the entire tree is branched, creating a branch can be done from just a subtree, so as long as the rest of the tree isn't modified, its indistinguishable from just branching the specific subtree.
 
 Tree provides its own branching feature, allowing additional local alternative views with buffered speculative edits.
@@ -99,7 +233,7 @@ This avoids having to complicate the logic for reading/viewing/editing the tree 
 One directional adapters could be used for migrating data (ideally lazily on first modification), while two directional adapters could even allow (when desired) keeping the persisted data in the legacy format for compatibility even across edits.
 3. Unknown content adapters: A special kind of Adapter which can be used to handle content in an unknown format at a specific location in the tree.
 This can provide localized/modular error handling for when an application opens a document where subsets of it are in formats the application does not understand.
-4. Partial loading support: The schema can opt into specific nodes or fields being lazy loaded, allowing for much larger documents to be opened and edited.
+4. <a id="partial"></a>Partial loading support: The schema can opt into specific nodes or fields being lazy loaded, allowing for much larger documents to be opened and edited.
 This will limit the functionality of indexes (unloaded content will not be included) unless the index is persisted as part of the document.
 5. Additional events: events could be added for cases like parent changed, or path changed.
 Alternatively or additionally observation tracking could be added to help with invalidation of derived data.
@@ -107,7 +241,12 @@ This would make having components depend on their parent or parent derived conte
 
 There are also some more speculative ideas which have been considered but are not planned:
 
-1. Optional Smart Service: an additional service could be run to improve partial locating support.
+1. <a id="service"></a>Optional Smart Service: an additional service could be run to improve partial locating support.
 It could handle summarization, indexes, filtering ops only to clients that need them and enforce fine grained permissions to allow for lighter weight clients or reduced permissions.
 This would allow modularizing things requiring permissions at the subtree level, which would otherwise only be possible with multiple containers.
 2. External data adapters: a generalization of adapters which would allow projecting data from another tree or even some unrelated data source into a subtree from the perspective of schema and the code using the tree.
+3. <a id="lazyschema"></a>Lazy loading schema adapters: a variant of "Unknown content adapters" combined with "Open polymorphism for AllowedTypes in schema" to allow schema for a member of a openly polymorphic allowed type to be lazy loaded.
+This lazy load could fail (due to incompatibility with the document's content). Such an adapter would need to handle both the not-yet-loaded and the failed-to-load cases similar to how unknown content is handled.
+
+
+### Recommended Patterns for
