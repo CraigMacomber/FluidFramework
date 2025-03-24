@@ -801,6 +801,12 @@ export interface SharedObjectKind<out TSharedObject = unknown> extends ErasedTyp
 // @public
 export const SharedTree: SharedObjectKind<ITree>;
 
+// @public @sealed
+export interface SimpleNodeSchemaBase<out TNodeKind extends NodeKind, out TCustomMetadata = unknown> {
+    readonly kind: TNodeKind;
+    readonly metadata?: NodeSchemaMetadata<TCustomMetadata> | undefined;
+}
+
 // @public
 export interface Tagged<V, T extends string = string> {
     // (undocumented)
@@ -933,16 +939,13 @@ export interface TreeNodeSchemaClassUnsafe<out Name extends string, out Kind ext
 }
 
 // @public @sealed
-export interface TreeNodeSchemaCore<out Name extends string, out Kind extends NodeKind, out ImplicitlyConstructable extends boolean, out Info = unknown, out TInsertable = never, out TCustomMetadata = unknown> {
+export interface TreeNodeSchemaCore<out Name extends string, out Kind extends NodeKind, out ImplicitlyConstructable extends boolean, out Info = unknown, out TInsertable = never, out TCustomMetadata = unknown> extends SimpleNodeSchemaBase<Kind, TCustomMetadata> {
     readonly childTypes: ReadonlySet<TreeNodeSchema>;
     // @sealed
     createFromInsertable(data: TInsertable): Unhydrated<TreeNode | TreeLeafValue>;
     readonly identifier: Name;
     readonly implicitlyConstructable: ImplicitlyConstructable;
     readonly info: Info;
-    // (undocumented)
-    readonly kind: Kind;
-    readonly metadata?: NodeSchemaMetadata<TCustomMetadata> | undefined;
 }
 
 // @public @sealed

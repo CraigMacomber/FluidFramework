@@ -5,7 +5,6 @@
 
 import type {
 	ScopedSchemaName,
-	InsertableObjectFromSchemaRecord,
 	TreeObjectNodeUnsafe,
 	InsertableObjectFromSchemaRecordUnsafe,
 } from "../../internalTypes.js";
@@ -20,7 +19,7 @@ import type {
 	InsertableTreeNodeFromImplicitAllowedTypes,
 	NodeSchemaOptions,
 } from "../schemaTypes.js";
-import { type TreeObjectNode, objectSchema } from "../objectNode.js";
+import { objectSchema } from "../objectNode.js";
 import type { RestrictiveStringRecord } from "../../util/index.js";
 import type { NodeKind, TreeNodeSchemaClass, WithType } from "../core/index.js";
 import type {
@@ -30,8 +29,10 @@ import type {
 	Unenforced,
 	ImplicitAllowedTypesUnsafe,
 } from "./typesUnsafe.js";
-import { mapSchema, type MapNodeInsertableData, type TreeMapNode } from "../mapNode.js";
+import { mapSchema } from "../mapNode.js";
 import { arraySchema, type TreeArrayNode } from "../arrayNode.js";
+import type { ObjectNodeSchema } from "../objectNodeTypes.js";
+import type { MapNodeSchema } from "../mapNodeTypes.js";
 
 /**
  * {@link SchemaFactory} with additional alpha APIs.
@@ -67,16 +68,7 @@ export class SchemaFactoryAlpha<
 		name: Name,
 		fields: T,
 		options?: SchemaFactoryObjectOptions<TCustomMetadata>,
-	): TreeNodeSchemaClass<
-		ScopedSchemaName<TScope, Name>,
-		NodeKind.Object,
-		TreeObjectNode<T, ScopedSchemaName<TScope, Name>>,
-		object & InsertableObjectFromSchemaRecord<T>,
-		true,
-		T,
-		never,
-		TCustomMetadata
-	> {
+	): ObjectNodeSchema<ScopedSchemaName<TScope, Name>, T, true, TCustomMetadata> {
 		return objectSchema(
 			this.scoped2(name),
 			fields,
@@ -107,7 +99,8 @@ export class SchemaFactoryAlpha<
 		T,
 		never,
 		TCustomMetadata
-	> {
+	> &
+		Pick<ObjectNodeSchema, "fields"> {
 		type TScopedName = ScopedSchemaName<TScope, Name>;
 		return this.object(
 			name,
@@ -122,7 +115,8 @@ export class SchemaFactoryAlpha<
 			T,
 			never,
 			TCustomMetadata
-		>;
+		> &
+			Pick<ObjectNodeSchema, "fields">;
 	}
 
 	/**
@@ -147,16 +141,7 @@ export class SchemaFactoryAlpha<
 		name: Name,
 		allowedTypes: T,
 		options?: NodeSchemaOptions<TCustomMetadata>,
-	): TreeNodeSchemaClass<
-		ScopedSchemaName<TScope, Name>,
-		NodeKind.Map,
-		TreeMapNode<T> & WithType<ScopedSchemaName<TScope, Name>, NodeKind.Map>,
-		MapNodeInsertableData<T>,
-		true,
-		T,
-		undefined,
-		TCustomMetadata
-	> {
+	): MapNodeSchema<true, ScopedSchemaName<TScope, Name>, T, true, TCustomMetadata> {
 		return mapSchema(this.scoped2(name), allowedTypes, true, true, options?.metadata);
 	}
 

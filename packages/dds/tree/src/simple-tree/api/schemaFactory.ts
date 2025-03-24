@@ -76,6 +76,7 @@ import type {
 } from "./typesUnsafe.js";
 import { createFieldSchemaUnsafe } from "./schemaFactoryRecursive.js";
 import { isLazy } from "../flexList.js";
+import type { MapNodeSchema } from "../mapNodeTypes.js";
 
 /**
  * Gets the leaf domain schema compatible with a given {@link TreeValue}.
@@ -646,26 +647,15 @@ export class SchemaFactory<
 						false,
 						true,
 					) as TreeNodeSchema,
-			) as TreeNodeSchemaBoth<
-				string,
-				NodeKind.Map,
-				TreeMapNode<T>,
-				MapNodeInsertableData<T>,
-				true,
-				T,
-				undefined
-			>;
+			) as MapNodeSchema<boolean, string, T, true>;
 		}
 		// To actually have type safety, assign to the type this method should return before implicitly upcasting when returning.
-		const out: TreeNodeSchemaBoth<
-			string,
-			NodeKind.Map,
-			TreeMapNode<T>,
-			MapNodeInsertableData<T>,
+		const out: MapNodeSchema<boolean, string, T, true> = this.namedMap(
+			nameOrAllowedTypes as TName,
+			allowedTypes,
 			true,
-			T,
-			undefined
-		> = this.namedMap(nameOrAllowedTypes as TName, allowedTypes, true, true);
+			true,
+		);
 		return out;
 	}
 
@@ -683,15 +673,7 @@ export class SchemaFactory<
 		allowedTypes: T,
 		customizable: boolean,
 		implicitlyConstructable: ImplicitlyConstructable,
-	): TreeNodeSchemaBoth<
-		ScopedSchemaName<TScope, Name>,
-		NodeKind.Map,
-		TreeMapNode<T> & WithType<ScopedSchemaName<TScope, Name>, NodeKind.Map>,
-		MapNodeInsertableData<T>,
-		ImplicitlyConstructable,
-		T,
-		undefined
-	> {
+	): MapNodeSchema<boolean, ScopedSchemaName<TScope, Name>, T, ImplicitlyConstructable> {
 		return mapSchema(
 			this.scoped(name),
 			allowedTypes,
@@ -808,6 +790,7 @@ export class SchemaFactory<
 			>;
 		}
 		const out: TreeNodeSchemaBoth<
+			boolean,
 			ScopedSchemaName<TScope, string>,
 			NodeKind.Array,
 			TreeArrayNode<T>,
@@ -838,6 +821,7 @@ export class SchemaFactory<
 		customizable: boolean,
 		implicitlyConstructable: ImplicitlyConstructable,
 	): TreeNodeSchemaBoth<
+		boolean,
 		ScopedSchemaName<TScope, Name>,
 		NodeKind.Array,
 		TreeArrayNode<T> & WithType<ScopedSchemaName<TScope, string>, NodeKind.Array>,

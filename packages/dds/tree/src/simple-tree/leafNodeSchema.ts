@@ -12,7 +12,8 @@ import {
 	valueSchemaAllows,
 } from "../feature-libraries/index.js";
 import { NodeKind, type TreeNodeSchema, type TreeNodeSchemaNonClass } from "./core/index.js";
-import type { TreeLeafValue } from "./schemaTypes.js";
+import type { NodeSchemaMetadata, TreeLeafValue } from "./schemaTypes.js";
+import type { SimpleLeafNodeSchema } from "./simpleSchema.js";
 
 /**
  * Instances of this class are schema for leaf nodes.
@@ -45,9 +46,14 @@ export class LeafNodeSchema<Name extends string, const T extends ValueSchema>
 		return data;
 	}
 
+	public readonly leafKind: ValueSchema;
+
+	public readonly metadata: NodeSchemaMetadata = {};
+
 	public constructor(name: Name, t: T) {
 		this.identifier = name;
 		this.info = t;
+		this.leafKind = t;
 	}
 }
 
@@ -75,12 +81,13 @@ function makeLeaf<Name extends string, const T extends ValueSchema>(
  */
 export interface LeafSchema<Name extends string, T extends TreeLeafValue>
 	extends TreeNodeSchemaNonClass<
-		`com.fluidframework.leaf.${Name}`,
-		NodeKind.Leaf,
-		/* TNode */ T,
-		/* TInsertable */ T,
-		/* ImplicitlyConstructable */ true
-	> {}
+			`com.fluidframework.leaf.${Name}`,
+			NodeKind.Leaf,
+			/* TNode */ T,
+			/* TInsertable */ T,
+			/* ImplicitlyConstructable */ true
+		>,
+		SimpleLeafNodeSchema {}
 
 // Leaf schema shared between all SchemaFactory instances.
 export const stringSchema = makeLeaf("string", ValueSchema.String);

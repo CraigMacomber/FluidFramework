@@ -15,12 +15,17 @@ import type { FieldKind, FieldSchemaMetadata, NodeSchemaMetadata } from "./schem
  */
 
 /**
- * Base interface for all {@link SimpleNodeSchema} implementations.
- *
- * @internal
+ * Base interface for {@link TreeNodeSchema} and {@link SimpleNodeSchema}.
+ * @privateRemarks
+ * Once simple schema is stable this doesn't have a reason to be kept `@system`, but it could be.
+ * @system
+ * @public
  * @sealed
  */
-export interface SimpleNodeSchemaBase<TNodeKind extends NodeKind> {
+export interface SimpleNodeSchemaBase<
+	out TNodeKind extends NodeKind,
+	out TCustomMetadata = unknown,
+> {
 	/**
 	 * The kind of {@link SimpleNodeSchema}.
 	 *
@@ -29,18 +34,19 @@ export interface SimpleNodeSchemaBase<TNodeKind extends NodeKind> {
 	readonly kind: TNodeKind;
 
 	/**
-	 * {@inheritDoc NodeSchemaMetadata}
+	 * User-provided {@link NodeSchemaMetadata} for this schema.
 	 */
-	readonly metadata?: NodeSchemaMetadata | undefined;
+	readonly metadata: NodeSchemaMetadata<TCustomMetadata>;
 }
 
 /**
  * A {@link SimpleNodeSchema} for an object node.
  *
- * @internal
+ * @alpha
  * @sealed
  */
-export interface SimpleObjectNodeSchema extends SimpleNodeSchemaBase<NodeKind.Object> {
+export interface SimpleObjectNodeSchema<out TCustomMetadata = unknown>
+	extends SimpleNodeSchemaBase<NodeKind.Object, TCustomMetadata> {
 	/**
 	 * Schemas for each of the object's fields, keyed off of schema's keys.
 	 * @remarks
@@ -58,7 +64,7 @@ export interface SimpleObjectNodeSchema extends SimpleNodeSchemaBase<NodeKind.Ob
  * @remarks
  * The only other case fields are uses in the root schema.
  *
- * @internal
+ * @alpha
  * @sealed
  */
 export interface SimpleObjectFieldSchema extends SimpleFieldSchema {
@@ -73,10 +79,11 @@ export interface SimpleObjectFieldSchema extends SimpleFieldSchema {
 /**
  * A {@link SimpleNodeSchema} for an array node.
  *
- * @internal
+ * @alpha
  * @sealed
  */
-export interface SimpleArrayNodeSchema extends SimpleNodeSchemaBase<NodeKind.Array> {
+export interface SimpleArrayNodeSchema<out TCustomMetadata = unknown>
+	extends SimpleNodeSchemaBase<NodeKind.Array, TCustomMetadata> {
 	/**
 	 * The types allowed in the array.
 	 *
@@ -89,10 +96,11 @@ export interface SimpleArrayNodeSchema extends SimpleNodeSchemaBase<NodeKind.Arr
 /**
  * A {@link SimpleNodeSchema} for a map node.
  *
- * @internal
+ * @alpha
  * @sealed
  */
-export interface SimpleMapNodeSchema extends SimpleNodeSchemaBase<NodeKind.Map> {
+export interface SimpleMapNodeSchema<out TCustomMetadata = unknown>
+	extends SimpleNodeSchemaBase<NodeKind.Map, TCustomMetadata> {
 	/**
 	 * The types allowed as values in the map.
 	 *
@@ -105,7 +113,7 @@ export interface SimpleMapNodeSchema extends SimpleNodeSchemaBase<NodeKind.Map> 
 /**
  * A {@link SimpleNodeSchema} for a leaf node.
  *
- * @internal
+ * @alpha
  * @sealed
  */
 export interface SimpleLeafNodeSchema extends SimpleNodeSchemaBase<NodeKind.Leaf> {
@@ -122,7 +130,7 @@ export interface SimpleLeafNodeSchema extends SimpleNodeSchemaBase<NodeKind.Leaf
  * To be useful, this generally needs to be used as a part of a complete {@link SimpleTreeSchema}, which
  * contains backing {@link SimpleTreeSchema.definitions} for each referenced identifier.
  *
- * @internal
+ * @alpha
  */
 export type SimpleNodeSchema =
 	| SimpleLeafNodeSchema

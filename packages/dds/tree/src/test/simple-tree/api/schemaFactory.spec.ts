@@ -18,6 +18,7 @@ import {
 	SchemaFactoryAlpha,
 	treeNodeApi as Tree,
 	TreeViewConfiguration,
+	type SimpleMapNodeSchema,
 	type TreeArrayNode,
 	type TreeMapNode,
 	type TreeView,
@@ -55,6 +56,7 @@ import type {
 
 import { hydrate } from "../utils.js";
 import { validateUsageError } from "../../utils.js";
+import type { MapNodeSchema } from "../../../simple-tree/mapNodeTypes.js";
 
 {
 	const schema = new SchemaFactory("Blah");
@@ -655,7 +657,13 @@ describe("schemaFactory", () => {
 			};
 
 			class Foo extends factory.mapAlpha("Foo", factory.number, { metadata: fooMetadata }) {}
+			const xx = Foo.identifier;
 
+			const _x2: typeof Foo = Foo;
+			const _x3: MapNodeSchema<true, (typeof Foo)["identifier"], T, true, TCustomMetadata> =
+				Foo;
+
+			const _x: SimpleMapNodeSchema = Foo;
 			assert.deepEqual(Foo.metadata, fooMetadata);
 
 			// Ensure `Foo.metadata` is typed as we expect, and we can access its fields without casting.

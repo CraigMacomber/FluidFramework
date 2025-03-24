@@ -3,7 +3,8 @@
  * Licensed under the MIT License.
  */
 
-import type { NodeSchemaMetadata, TreeLeafValue } from "../schemaTypes.js";
+import type { TreeLeafValue } from "../schemaTypes.js";
+import type { SimpleNodeSchemaBase } from "../simpleSchema.js";
 import type { InternalTreeNode, TreeNode, Unhydrated } from "./types.js";
 
 /**
@@ -190,8 +191,11 @@ export type TreeNodeSchemaClass<
 
 /**
  * Internal helper for utilities that return schema which can be used in class and non class formats depending on the API exposing it.
+ * @system
+ * @public
  */
 export type TreeNodeSchemaBoth<
+	TClass extends boolean = boolean,
 	Name extends string = string,
 	Kind extends NodeKind = NodeKind,
 	TNode extends TreeNode = TreeNode,
@@ -200,26 +204,30 @@ export type TreeNodeSchemaBoth<
 	Info = unknown,
 	TConstructorExtra = never,
 	TCustomMetadata = unknown,
-> = TreeNodeSchemaClass<
-	Name,
-	Kind,
-	TNode,
-	TInsertable,
-	ImplicitlyConstructable,
-	Info,
-	TConstructorExtra,
-	TCustomMetadata
-> &
-	TreeNodeSchemaNonClass<
-		Name,
-		Kind,
-		TNode,
-		TInsertable,
-		ImplicitlyConstructable,
-		Info,
-		TConstructorExtra,
-		TCustomMetadata
-	>;
+> = (true extends TClass
+	? TreeNodeSchemaClass<
+			Name,
+			Kind,
+			TNode,
+			TInsertable,
+			ImplicitlyConstructable,
+			Info,
+			TConstructorExtra,
+			TCustomMetadata
+		>
+	: TreeNodeSchema) &
+	(false extends TClass
+		? TreeNodeSchemaNonClass<
+				Name,
+				Kind,
+				TNode,
+				TInsertable,
+				ImplicitlyConstructable,
+				Info,
+				TConstructorExtra,
+				TCustomMetadata
+			>
+		: TreeNodeSchema);
 
 /**
  * Data common to all tree node schema.
@@ -234,7 +242,7 @@ export interface TreeNodeSchemaCore<
 	out Info = unknown,
 	out TInsertable = never,
 	out TCustomMetadata = unknown,
-> {
+> extends SimpleNodeSchemaBase<Kind, TCustomMetadata> {
 	/**
 	 * Unique (within a document's schema) identifier used to associate nodes with their schema.
 	 * @remarks
@@ -246,7 +254,6 @@ export interface TreeNodeSchemaCore<
 	 * it is best practice to pick a new identifier.
 	 */
 	readonly identifier: Name;
-	readonly kind: Kind;
 
 	/**
 	 * Data used to define this schema.
@@ -289,11 +296,6 @@ export interface TreeNodeSchemaCore<
 	 * @system
 	 */
 	readonly childTypes: ReadonlySet<TreeNodeSchema>;
-
-	/**
-	 * User-provided {@link NodeSchemaMetadata} for this schema.
-	 */
-	readonly metadata?: NodeSchemaMetadata<TCustomMetadata> | undefined;
 
 	/**
 	 * Constructs an instance of this node type.

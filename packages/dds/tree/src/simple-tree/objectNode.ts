@@ -27,6 +27,8 @@ import {
 	type ImplicitAllowedTypes,
 	FieldKind,
 	type NodeSchemaMetadata,
+	type FieldSchemaAlpha,
+	ObjectFieldSchema,
 } from "./schemaTypes.js";
 import {
 	type TreeNodeSchema,
@@ -50,6 +52,7 @@ import {
 } from "./objectNodeTypes.js";
 import { TreeNodeValid, type MostDerivedData } from "./treeNodeValid.js";
 import { getUnhydratedContext } from "./createContext.js";
+import type { SimpleObjectFieldSchema } from "./simpleSchema.js";
 
 /**
  * Generates the properties for an ObjectNode from its field schema object.
@@ -366,8 +369,17 @@ export function objectSchema<
 	let unhydratedContext: Context;
 
 	class CustomObjectNode extends CustomObjectNodeBase<T> {
-		public static readonly fields: ReadonlyMap<string, FieldSchema> = new Map(
-			Array.from(flexKeyMap, ([key, value]) => [key as string, value.schema]),
+		public static readonly fields: ReadonlyMap<
+			string,
+			FieldSchemaAlpha & SimpleObjectFieldSchema
+		> = new Map(
+			Array.from(flexKeyMap, ([key, value]) => [
+				key as string,
+				new ObjectFieldSchema(value.schema.kind, value.schema.allowedTypes, {
+					...value.schema.props,
+					key: getStoredKey(key as string, value.schema),
+				}),
+			]),
 		);
 		public static readonly flexKeyMap: SimpleKeyMap = flexKeyMap;
 		public static readonly storedKeyToPropertyKey: ReadonlyMap<FieldKey, string> = new Map<
@@ -467,8 +479,7 @@ export function objectSchema<
 		public static get childTypes(): ReadonlySet<TreeNodeSchema> {
 			return lazyChildTypes.value;
 		}
-		public static readonly metadata: NodeSchemaMetadata<TCustomMetadata> | undefined =
-			metadata;
+		public static readonly metadata: NodeSchemaMetadata<TCustomMetadata> = metadata ?? {};
 
 		// eslint-disable-next-line import/no-deprecated
 		public get [typeNameSymbol](): TName {
