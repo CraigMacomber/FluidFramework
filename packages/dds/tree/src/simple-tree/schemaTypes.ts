@@ -330,8 +330,8 @@ export class FieldSchema<
 	/**
 	 * {@inheritDoc FieldProps.metadata}
 	 */
-	public get metadata(): FieldSchemaMetadata<TCustomMetadata> | undefined {
-		return this.props?.metadata;
+	public get metadata(): FieldSchemaMetadata<TCustomMetadata> {
+		return this.props?.metadata ?? {};
 	}
 
 	/**

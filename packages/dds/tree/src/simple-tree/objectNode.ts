@@ -58,11 +58,15 @@ import type { SimpleObjectFieldSchema } from "./simpleSchema.js";
  * Generates the properties for an ObjectNode from its field schema object.
  * @system @public
  */
-export type ObjectFromSchemaRecord<T extends RestrictiveStringRecord<ImplicitFieldSchema>> = {
-	-readonly [Property in keyof T]: Property extends string
-		? TreeFieldFromImplicitField<T[Property]>
-		: unknown;
-};
+export type ObjectFromSchemaRecord<T extends RestrictiveStringRecord<ImplicitFieldSchema>> =
+	RestrictiveStringRecord<ImplicitFieldSchema> extends T
+		? // eslint-disable-next-line @typescript-eslint/ban-types
+			{}
+		: {
+				-readonly [Property in keyof T]: Property extends string
+					? TreeFieldFromImplicitField<T[Property]>
+					: unknown;
+			};
 
 /**
  * A {@link TreeNode} which modules a JavaScript object.
@@ -115,12 +119,21 @@ export type FieldHasDefault<T extends ImplicitFieldSchema> = T extends FieldSche
  * To prevent extraneous properties in literals for the fields of an empty object from compiling, the empty case is special cased to produce `Record<string, never>`.
  * More details at {@link https://mercury.com/blog/creating-an-emptyobject-type-in-typescript}.
  *
+ * Additionally when T is exactly `RestrictiveStringRecord<ImplicitFieldSchema>` produce just `never` so that it is assignable to the insertable for any given object type.
+ *
+ * Separating `{}` from `RestrictiveStringRecord<ImplicitFieldSchema>` is a bit messy since both extend each-other despite them being very different types.
+ * A third dummy type `{ arbitraryKey: "arbitraryValue" }` is used to resolve this.
+ *
  * @system @public
  */
 export type InsertableObjectFromSchemaRecord<
 	T extends RestrictiveStringRecord<ImplicitFieldSchema>,
-> = Record<string, never> extends T
-	? Record<string, never>
+> = RestrictiveStringRecord<ImplicitFieldSchema> extends T
+	? { arbitraryKey: "arbitraryValue" } extends T
+		? // {} case
+			Record<string, never>
+		: // RestrictiveStringRecord<ImplicitFieldSchema> case
+			never
 	: FlattenKeys<
 			{
 				readonly [Property in keyof T]?: InsertableTreeFieldFromImplicitField<

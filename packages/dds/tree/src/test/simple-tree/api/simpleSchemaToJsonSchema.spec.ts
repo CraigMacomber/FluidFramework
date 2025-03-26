@@ -29,6 +29,7 @@ describe("simpleSchemaToJsonSchema", () => {
 	it("Leaf schema", async () => {
 		const input: SimpleTreeSchema = {
 			kind: FieldKind.Required,
+			metadata: {},
 			definitions: new Map<string, SimpleNodeSchema>([
 				["test.string", { leafKind: ValueSchema.String, metadata: {}, kind: NodeKind.Leaf }],
 			]),
@@ -62,6 +63,7 @@ describe("simpleSchemaToJsonSchema", () => {
 	it("Leaf node (Fluid Handle)", async () => {
 		const input: SimpleTreeSchema = {
 			kind: FieldKind.Required,
+			metadata: {},
 			definitions: new Map<string, SimpleNodeSchema>([
 				[
 					"test.handle",
@@ -240,6 +242,7 @@ describe("simpleSchemaToJsonSchema", () => {
 	it("Object schema", () => {
 		const input: SimpleTreeSchema = {
 			kind: FieldKind.Required,
+			metadata: {},
 			definitions: new Map<string, SimpleNodeSchema>([
 				[
 					"test.object",
@@ -361,6 +364,7 @@ describe("simpleSchemaToJsonSchema", () => {
 	it("Object schema including an identifier field", () => {
 		const input: SimpleTreeSchema = {
 			kind: FieldKind.Required,
+			metadata: {},
 			definitions: new Map<string, SimpleNodeSchema>([
 				[
 					"test.object",
@@ -374,6 +378,7 @@ describe("simpleSchemaToJsonSchema", () => {
 									kind: FieldKind.Identifier,
 									allowedTypesIdentifiers: new Set<string>(["test.identifier"]),
 									storedKey: "id",
+									metadata: {},
 								},
 							],
 						]),
@@ -413,6 +418,7 @@ describe("simpleSchemaToJsonSchema", () => {
 	it("Object schema including a union field", () => {
 		const input: SimpleTreeSchema = {
 			kind: FieldKind.Required,
+			metadata: {},
 			definitions: new Map<string, SimpleNodeSchema>([
 				[
 					"test.object",
@@ -470,6 +476,7 @@ describe("simpleSchemaToJsonSchema", () => {
 	it("Recursive object schema", () => {
 		const input: SimpleTreeSchema = {
 			kind: FieldKind.Required,
+			metadata: {},
 			definitions: new Map<string, SimpleNodeSchema>([
 				[
 					"test.recursive-object",
@@ -481,6 +488,7 @@ describe("simpleSchemaToJsonSchema", () => {
 								"foo",
 								{
 									kind: FieldKind.Optional,
+									metadata: {},
 									allowedTypesIdentifiers: new Set<string>([
 										"test.string",
 										"test.recursive-object",

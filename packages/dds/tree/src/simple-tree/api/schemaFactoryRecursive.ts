@@ -32,14 +32,9 @@ export function createFieldSchemaUnsafe<
 	kind: Kind,
 	allowedTypes: Types,
 	props?: FieldProps<TCustomMetadata>,
-): FieldSchemaUnsafe<Kind, Types> {
+): FieldSchemaUnsafe<Kind, Types, TCustomMetadata> {
 	// At runtime, we still want this to be a FieldSchema instance, but we can't satisfy its extends clause, so just return it as an FieldSchemaUnsafe
-	return createFieldSchema(kind, allowedTypes as ImplicitAllowedTypes, props) as FieldSchema<
-		Kind,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		any,
-		TCustomMetadata
-	> as FieldSchemaUnsafe<Kind, Types, TCustomMetadata>;
+	return createFieldSchema(kind, allowedTypes as ImplicitAllowedTypes & Types, props);
 }
 
 /**

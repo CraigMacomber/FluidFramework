@@ -804,7 +804,7 @@ function exportSimpleFieldSchemaStored(schema: TreeFieldStoredSchema): SimpleFie
 		default:
 			fail(0xaca /* invalid field kind */);
 	}
-	return { kind, allowedTypesIdentifiers: schema.types };
+	return { kind, allowedTypesIdentifiers: schema.types, metadata: {} };
 }
 
 function exportSimpleNodeSchemaStored(schema: TreeNodeStoredSchema): SimpleNodeSchema {

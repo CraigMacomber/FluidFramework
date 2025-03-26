@@ -20,22 +20,21 @@ import type { SimpleObjectFieldSchema, SimpleObjectNodeSchema } from "./simpleSc
  * @alpha
  */
 export interface ObjectNodeSchema<
-	TName extends string = string,
-	T extends
+	out TName extends string = string,
+	in out T extends
 		RestrictiveStringRecord<ImplicitFieldSchema> = RestrictiveStringRecord<ImplicitFieldSchema>,
 	ImplicitlyConstructable extends boolean = boolean,
-	TCustomMetadata = unknown,
+	out TCustomMetadata = unknown,
 > extends TreeNodeSchemaClass<
-			TName,
-			NodeKind.Object,
-			TreeObjectNode<T, TName>,
-			object & InsertableObjectFromSchemaRecord<T>,
-			ImplicitlyConstructable,
-			T,
-			never,
-			TCustomMetadata
-		>,
-		SimpleObjectNodeSchema<TCustomMetadata> {
+		TName,
+		NodeKind.Object,
+		TreeObjectNode<T, TName>,
+		object & InsertableObjectFromSchemaRecord<T>,
+		ImplicitlyConstructable,
+		T,
+		never,
+		TCustomMetadata
+	> {
 	/**
 	 * From property keys to the associated schema.
 	 */

@@ -27,7 +27,7 @@ export interface SimpleNodeSchemaBase<
 	out TCustomMetadata = unknown,
 > {
 	/**
-	 * The kind of {@link SimpleNodeSchema}.
+	 * The {@link NodeKind}.
 	 *
 	 * @remarks can be used to type-switch between implementations.
 	 */
@@ -40,6 +40,8 @@ export interface SimpleNodeSchemaBase<
 }
 
 /**
+ * A schema for an object node.
+ * @privateRemarks
  * A {@link SimpleNodeSchema} for an object node.
  *
  * @alpha
@@ -60,7 +62,7 @@ export interface SimpleObjectNodeSchema<out TCustomMetadata = unknown>
 }
 
 /**
- * A {@link SimpleNodeSchema} for an object node.
+ * A {@link SimpleFieldSchema} for an {@link SimpleObjectNodeSchema} field.
  * @remarks
  * The only other case fields are uses in the root schema.
  *
@@ -160,16 +162,16 @@ export interface SimpleFieldSchema {
 	 * The types allowed under the field.
 	 *
 	 * @remarks Refers to the types by identifier.
-	 * @privateremarks
+	 * @privateRemarks
 	 * A {@link SimpleTreeSchema} is needed to resolve these identifiers to their schema {@link SimpleTreeSchema.definitions}.
-	 * TODO: make these mack into normal `remarks` once SimpleTreeSchema is not internal.
+	 * TODO: make these back into normal `remarks` once SimpleTreeSchema is not internal.
 	 */
 	readonly allowedTypesIdentifiers: ReadonlySet<string>;
 
 	/**
 	 * {@inheritDoc FieldSchemaMetadata}
 	 */
-	readonly metadata?: FieldSchemaMetadata | undefined;
+	readonly metadata: FieldSchemaMetadata;
 }
 
 /**

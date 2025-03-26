@@ -152,7 +152,7 @@ export class FieldSchema<out Kind extends FieldKind = FieldKind, out Types exten
     readonly allowedTypes: Types;
     get allowedTypeSet(): ReadonlySet<TreeNodeSchema>;
     readonly kind: Kind;
-    get metadata(): FieldSchemaMetadata<TCustomMetadata> | undefined;
+    get metadata(): FieldSchemaMetadata<TCustomMetadata>;
     readonly props?: FieldProps<TCustomMetadata> | undefined;
     readonly requiresValue: boolean;
     protected _typeCheck: MakeNominal;
@@ -163,6 +163,11 @@ export class FieldSchemaAlpha<Kind extends FieldKind = FieldKind, Types extends 
     protected constructor(kind: Kind, allowedTypes: Types, props?: FieldProps<TCustomMetadata>);
     // (undocumented)
     get allowedTypesIdentifiers(): ReadonlySet<string>;
+}
+
+// @alpha @sealed
+export interface FieldSchemaAlphaUnsafe<out Kind extends FieldKind, out Types extends ImplicitAllowedTypesUnsafe, out TCustomMetadata = unknown> extends FieldSchemaAlpha<Kind, any, TCustomMetadata>, FieldSchemaUnsafe<Kind, Types, TCustomMetadata> {
+    readonly allowedTypes: Types;
 }
 
 // @public @sealed
@@ -273,7 +278,9 @@ TSchema
 ] extends [ImplicitFieldSchema] ? InsertableTreeFieldFromImplicitField<TSchema> : [TSchema] extends [UnsafeUnknownSchema] ? InsertableContent | undefined : never;
 
 // @public
-type InsertableObjectFromSchemaRecord<T extends RestrictiveStringRecord<ImplicitFieldSchema>> = Record<string, never> extends T ? Record<string, never> : FlattenKeys<{
+type InsertableObjectFromSchemaRecord<T extends RestrictiveStringRecord<ImplicitFieldSchema>> = RestrictiveStringRecord<ImplicitFieldSchema> extends T ? {
+    arbitraryKey: "arbitraryValue";
+} extends T ? Record<string, never> : never : FlattenKeys<{
     readonly [Property in keyof T]?: InsertableTreeFieldFromImplicitField<T[Property & string]>;
 } & {
     readonly [Property in keyof T as FieldHasDefault<T[Property & string]> extends false ? Property : never]: InsertableTreeFieldFromImplicitField<T[Property & string]>;
@@ -555,7 +562,7 @@ export interface NodeSchemaOptions<out TCustomMetadata = unknown> {
 export const noopValidator: JsonValidator;
 
 // @public
-type ObjectFromSchemaRecord<T extends RestrictiveStringRecord<ImplicitFieldSchema>> = {
+type ObjectFromSchemaRecord<T extends RestrictiveStringRecord<ImplicitFieldSchema>> = RestrictiveStringRecord<ImplicitFieldSchema> extends T ? {} : {
     -readonly [Property in keyof T]: Property extends string ? TreeFieldFromImplicitField<T[Property]> : unknown;
 };
 
@@ -565,7 +572,7 @@ type ObjectFromSchemaRecordUnsafe<T extends Unenforced<RestrictiveStringRecord<I
 };
 
 // @alpha @sealed
-export interface ObjectNodeSchema<TName extends string = string, T extends RestrictiveStringRecord<ImplicitFieldSchema> = RestrictiveStringRecord<ImplicitFieldSchema>, ImplicitlyConstructable extends boolean = boolean, TCustomMetadata = unknown> extends TreeNodeSchemaClass<TName, NodeKind.Object, TreeObjectNode<T, TName>, object & InsertableObjectFromSchemaRecord<T>, ImplicitlyConstructable, T, never, TCustomMetadata>, SimpleObjectNodeSchema<TCustomMetadata> {
+export interface ObjectNodeSchema<out TName extends string = string, in out T extends RestrictiveStringRecord<ImplicitFieldSchema> = RestrictiveStringRecord<ImplicitFieldSchema>, ImplicitlyConstructable extends boolean = boolean, out TCustomMetadata = unknown> extends TreeNodeSchemaClass<TName, NodeKind.Object, TreeObjectNode<T, TName>, object & InsertableObjectFromSchemaRecord<T>, ImplicitlyConstructable, T, never, TCustomMetadata> {
     readonly fields: ReadonlyMap<string, FieldSchemaAlpha & SimpleObjectFieldSchema>;
 }
 
@@ -726,12 +733,12 @@ export class SchemaFactory<out TScope extends string | undefined = string | unde
     objectRecursive<const Name extends TName, const T extends RestrictiveStringRecord<Unenforced<ImplicitFieldSchema>>>(name: Name, t: T): TreeNodeSchemaClass<ScopedSchemaName<TScope, Name>, NodeKind.Object, TreeObjectNodeUnsafe<T, ScopedSchemaName<TScope, Name>>, object & InsertableObjectFromSchemaRecordUnsafe<T>, false, T>;
     readonly optional: <const T extends ImplicitAllowedTypes, const TCustomMetadata = unknown>(t: T, props?: Omit<FieldProps<TCustomMetadata>, "defaultProvider"> | undefined) => FieldSchema<FieldKind.Optional, T, TCustomMetadata>;
     static readonly optional: <const T extends ImplicitAllowedTypes, const TCustomMetadata = unknown>(t: T, props?: Omit<FieldProps<TCustomMetadata>, "defaultProvider"> | undefined) => FieldSchema<FieldKind.Optional, T, TCustomMetadata>;
-    readonly optionalRecursive: <const T extends ImplicitAllowedTypesUnsafe>(t: T, props?: Omit<FieldProps<unknown>, "defaultProvider"> | undefined) => FieldSchemaUnsafe<FieldKind.Optional, T, unknown>;
-    static readonly optionalRecursive: <const T extends ImplicitAllowedTypesUnsafe>(t: T, props?: Omit<FieldProps<unknown>, "defaultProvider"> | undefined) => FieldSchemaUnsafe<FieldKind.Optional, T, unknown>;
+    readonly optionalRecursive: <const T extends ImplicitAllowedTypesUnsafe, const TCustomMetadata = unknown>(t: T, props?: Omit<FieldProps<TCustomMetadata>, "defaultProvider"> | undefined) => FieldSchemaUnsafe<FieldKind.Optional, T, TCustomMetadata>;
+    static readonly optionalRecursive: <const T extends ImplicitAllowedTypesUnsafe, const TCustomMetadata = unknown>(t: T, props?: Omit<FieldProps<TCustomMetadata>, "defaultProvider"> | undefined) => FieldSchemaUnsafe<FieldKind.Optional, T, TCustomMetadata>;
     readonly required: <const T extends ImplicitAllowedTypes, const TCustomMetadata = unknown>(t: T, props?: Omit<FieldProps<TCustomMetadata>, "defaultProvider"> | undefined) => FieldSchema<FieldKind.Required, T, TCustomMetadata>;
     static readonly required: <const T extends ImplicitAllowedTypes, const TCustomMetadata = unknown>(t: T, props?: Omit<FieldProps<TCustomMetadata>, "defaultProvider"> | undefined) => FieldSchema<FieldKind.Required, T, TCustomMetadata>;
-    readonly requiredRecursive: <const T extends ImplicitAllowedTypesUnsafe>(t: T, props?: Omit<FieldProps<unknown>, "defaultProvider"> | undefined) => FieldSchemaUnsafe<FieldKind.Required, T, unknown>;
-    static readonly requiredRecursive: <const T extends ImplicitAllowedTypesUnsafe>(t: T, props?: Omit<FieldProps<unknown>, "defaultProvider"> | undefined) => FieldSchemaUnsafe<FieldKind.Required, T, unknown>;
+    readonly requiredRecursive: <const T extends ImplicitAllowedTypesUnsafe, const TCustomMetadata = unknown>(t: T, props?: Omit<FieldProps<TCustomMetadata>, "defaultProvider"> | undefined) => FieldSchemaUnsafe<FieldKind.Required, T, TCustomMetadata>;
+    static readonly requiredRecursive: <const T extends ImplicitAllowedTypesUnsafe, const TCustomMetadata = unknown>(t: T, props?: Omit<FieldProps<TCustomMetadata>, "defaultProvider"> | undefined) => FieldSchemaUnsafe<FieldKind.Required, T, TCustomMetadata>;
     readonly scope: TScope;
     readonly string: LeafSchema_2<"string", string>;
     static readonly string: LeafSchema_2<"string", string>;
@@ -753,7 +760,8 @@ export class SchemaFactoryAlpha<out TScope extends string | undefined = string |
         readonly [x: string]: InsertableTreeNodeFromImplicitAllowedTypesUnsafe<T>;
     }, false, T, undefined, TCustomMetadata>;
     object<const Name extends TName, const T extends RestrictiveStringRecord<ImplicitFieldSchema>, const TCustomMetadata = unknown>(name: Name, fields: T, options?: SchemaFactoryObjectOptions<TCustomMetadata>): ObjectNodeSchema<ScopedSchemaName<TScope, Name>, T, true, TCustomMetadata>;
-    objectRecursive<const Name extends TName, const T extends Unenforced<RestrictiveStringRecord<ImplicitFieldSchema>>, const TCustomMetadata = unknown>(name: Name, t: T, options?: SchemaFactoryObjectOptions<TCustomMetadata>): TreeNodeSchemaClass<ScopedSchemaName<TScope, Name>, NodeKind.Object, TreeObjectNodeUnsafe<T, ScopedSchemaName<TScope, Name>>, object & InsertableObjectFromSchemaRecordUnsafe<T>, false, T, never, TCustomMetadata> & Pick<ObjectNodeSchema, "fields">;
+    objectRecursive<const Name extends TName, const T extends Unenforced<RestrictiveStringRecord<ImplicitFieldSchema>>, const TCustomMetadata = unknown>(name: Name, t: T, options?: SchemaFactoryObjectOptions<TCustomMetadata>): TreeNodeSchemaClass<ScopedSchemaName<TScope, Name>, NodeKind.Object, TreeObjectNodeUnsafe<T, ScopedSchemaName<TScope, Name>>, object & InsertableObjectFromSchemaRecordUnsafe<T>, false, T, never, TCustomMetadata> & SimpleObjectNodeSchema<TCustomMetadata> & Pick<ObjectNodeSchema, "fields">;
+    readonly optionalRecursive: <const T extends ImplicitAllowedTypesUnsafe, const TCustomMetadata = unknown>(t: T, props?: Omit<FieldProps<TCustomMetadata>, "defaultProvider">) => FieldSchemaAlphaUnsafe<FieldKind.Optional, T, TCustomMetadata>;
     scopedFactory<const T extends TName, TNameInner extends number | string = string>(name: T): SchemaFactoryAlpha<ScopedSchemaName<TScope, T>, TNameInner>;
 }
 
@@ -772,8 +780,8 @@ export const schemaStatics: {
     readonly leaves: readonly [LeafSchema_2<"string", string>, LeafSchema_2<"number", number>, LeafSchema_2<"boolean", boolean>, LeafSchema_2<"null", null>, LeafSchema_2<"handle", IFluidHandle<unknown>>];
     readonly optional: <const T extends ImplicitAllowedTypes, const TCustomMetadata = unknown>(t: T, props?: Omit<FieldProps<TCustomMetadata>, "defaultProvider">) => FieldSchema<FieldKind.Optional, T, TCustomMetadata>;
     readonly required: <const T_1 extends ImplicitAllowedTypes, const TCustomMetadata_1 = unknown>(t: T_1, props?: Omit<FieldProps<TCustomMetadata_1>, "defaultProvider"> | undefined) => FieldSchema<FieldKind.Required, T_1, TCustomMetadata_1>;
-    readonly optionalRecursive: <const T_2 extends ImplicitAllowedTypesUnsafe>(t: T_2, props?: Omit<FieldProps, "defaultProvider">) => FieldSchemaUnsafe<FieldKind.Optional, T_2, unknown>;
-    readonly requiredRecursive: <const T_3 extends ImplicitAllowedTypesUnsafe>(t: T_3, props?: Omit<FieldProps, "defaultProvider">) => FieldSchemaUnsafe<FieldKind.Required, T_3, unknown>;
+    readonly optionalRecursive: <const T_2 extends ImplicitAllowedTypesUnsafe, const TCustomMetadata_2 = unknown>(t: T_2, props?: Omit<FieldProps<TCustomMetadata_2>, "defaultProvider"> | undefined) => FieldSchemaUnsafe<FieldKind.Optional, T_2, TCustomMetadata_2>;
+    readonly requiredRecursive: <const T_3 extends ImplicitAllowedTypesUnsafe, const TCustomMetadata_3 = unknown>(t: T_3, props?: Omit<FieldProps<TCustomMetadata_3>, "defaultProvider"> | undefined) => FieldSchemaUnsafe<FieldKind.Required, T_3, TCustomMetadata_3>;
 };
 
 // @alpha
@@ -812,7 +820,7 @@ export interface SimpleArrayNodeSchema<out TCustomMetadata = unknown> extends Si
 export interface SimpleFieldSchema {
     readonly allowedTypesIdentifiers: ReadonlySet<string>;
     readonly kind: FieldKind;
-    readonly metadata?: FieldSchemaMetadata | undefined;
+    readonly metadata: FieldSchemaMetadata;
 }
 
 // @alpha @sealed
@@ -1094,7 +1102,7 @@ type TreeNodeSchemaUnsafe<Name extends string = string, Kind extends NodeKind = 
 export type TreeObjectNode<T extends RestrictiveStringRecord<ImplicitFieldSchema>, TypeName extends string = string> = TreeNode & ObjectFromSchemaRecord<T> & WithType<TypeName, NodeKind.Object, T>;
 
 // @public
-export type TreeObjectNodeUnsafe<T extends Unenforced<RestrictiveStringRecord<ImplicitFieldSchema>>, TypeName extends string = string> = TreeNode & ObjectFromSchemaRecordUnsafe<T> & WithType<TypeName, NodeKind.Object>;
+export type TreeObjectNodeUnsafe<T extends Unenforced<RestrictiveStringRecord<ImplicitFieldSchema>>, TypeName extends string = string> = TreeNode & ObjectFromSchemaRecordUnsafe<T> & WithType<TypeName, NodeKind.Object, T>;
 
 // @public
 export enum TreeStatus {
