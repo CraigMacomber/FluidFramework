@@ -17,8 +17,10 @@ import {
 	type ExclusiveMapTree,
 } from "../core/index.js";
 import {
+	getSchemaAndPolicy,
 	isTreeValue,
 	valueSchemaAllows,
+	type FlexTreeContext,
 	type NodeIdentifierManager,
 } from "../feature-libraries/index.js";
 import { brand, isReadonlyArray, find, hasSome, hasSingle } from "../util/index.js";
@@ -50,6 +52,7 @@ import {
 import { SchemaValidationErrors, isNodeInSchema } from "../feature-libraries/index.js";
 import { isObjectNodeSchema } from "./objectNodeTypes.js";
 import type { IFluidHandle } from "@fluidframework/core-interfaces";
+import { prepareContentForHydration } from "./proxies.js";
 
 /**
  * Module notes:
@@ -144,6 +147,25 @@ export function mapTreeFromNodeData(
 	}
 
 	return mapTree;
+}
+
+export function prepareForInsertion<TIn extends InsertableContent | undefined>(
+	data: TIn,
+	schema: ImplicitFieldSchema,
+	destinationContext: FlexTreeContext,
+): ExclusiveMapTree | undefined extends TIn ? undefined : never {
+	const mapTree = mapTreeFromNodeData(
+		data,
+		schema,
+		destinationContext.isHydrated() ? destinationContext.nodeKeyManager : undefined,
+		getSchemaAndPolicy(destinationContext),
+	);
+
+	if (mapTree !== undefined && destinationContext.isHydrated()) {
+		prepareContentForHydration(mapTree, destinationContext.checkout.forest);
+	}
+
+	return mapTree as ExclusiveMapTree | undefined extends TIn ? undefined : never;
 }
 
 /**

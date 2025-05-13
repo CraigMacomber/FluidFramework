@@ -6,7 +6,6 @@
 import { assert, unreachableCase, fail } from "@fluidframework/core-utils/internal";
 
 import {
-	CursorLocationType,
 	type ITreeCursorSynchronous,
 	type TreeStoredSchema,
 	rootFieldKey,
@@ -15,11 +14,9 @@ import {
 import {
 	FieldKinds,
 	allowsRepoSuperset,
-	cursorForMapTreeField,
 	defaultSchemaPolicy,
-	mapTreeFromCursor,
+	type TreeChunk,
 } from "../feature-libraries/index.js";
-import { isReadonlyArray } from "../util/index.js";
 import type { ITreeCheckout } from "./treeCheckout.js";
 import type { SchemaCompatibilityTester } from "../simple-tree/index.js";
 
@@ -136,24 +133,6 @@ export function canInitialize(checkout: ITreeCheckout): boolean {
 	return checkout.forest.isEmpty && schemaDataIsEmpty(checkout.storedSchema);
 }
 
-function normalizeNewFieldContent(
-	content: readonly ITreeCursorSynchronous[] | ITreeCursorSynchronous | undefined,
-): ITreeCursorSynchronous {
-	if (content === undefined) {
-		return cursorForMapTreeField([]);
-	}
-
-	if (isReadonlyArray(content)) {
-		return cursorForMapTreeField(content.map((c) => mapTreeFromCursor(c)));
-	}
-
-	if (content.mode === CursorLocationType.Fields) {
-		return content;
-	}
-
-	return cursorForMapTreeField([mapTreeFromCursor(content)]);
-}
-
 /**
  * Initialize a checkout with a schema and tree content.
  * This function should only be called when the tree is uninitialized (no schema or content).
@@ -162,19 +141,22 @@ function normalizeNewFieldContent(
  * If the proposed schema (from `treeContent`) is not compatible with the empty tree, this function handles using an intermediate schema
  * which supports the empty tree as well as the final tree content.
  */
-export function initialize(checkout: ITreeCheckout, treeContent: TreeStoredContent): void {
+export function initialize(
+	checkout: ITreeCheckout,
+	schema: TreeStoredSchema,
+	contentBuilder: () => TreeChunk,
+): void {
 	checkout.transaction.start();
 	try {
-		initializeContent(checkout, treeContent.schema, () => {
+		initializeContent(checkout, schema, () => {
 			const field = { field: rootFieldKey, parent: undefined };
-			const content = normalizeNewFieldContent(treeContent.initialTree);
-			const contentChunk = checkout.forest.chunkField(content);
+			const contentChunk = contentBuilder();
 
 			switch (checkout.storedSchema.rootFieldSchema.kind) {
 				case FieldKinds.optional.identifier: {
 					const fieldEditor = checkout.editor.optionalField(field);
 					assert(
-						content.getFieldLength() <= 1,
+						contentChunk.topLevelLength <= 1,
 						0x7f4 /* optional field content should normalize at most one item */,
 					);
 					fieldEditor.set(contentChunk.topLevelLength === 0 ? undefined : contentChunk, true);

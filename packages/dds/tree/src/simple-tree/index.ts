@@ -183,10 +183,7 @@ export {
 	type NodeSchemaMetadata,
 	evaluateLazySchema,
 } from "./schemaTypes.js";
-export {
-	getTreeNodeForField,
-	prepareContentForHydration,
-} from "./proxies.js";
+export { getTreeNodeForField } from "./proxies.js";
 export {
 	TreeArrayNode,
 	IterableTreeArrayContent,
@@ -218,6 +215,7 @@ export {
 	type InsertableContent,
 	type FactoryContent,
 	type FactoryContentObject,
+	prepareForInsertion,
 } from "./toMapTree.js";
 export { toStoredSchema, getStoredSchema } from "./toStoredSchema.js";
 export {

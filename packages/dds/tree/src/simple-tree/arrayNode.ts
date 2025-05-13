@@ -10,10 +10,8 @@ import { EmptyKey, type ExclusiveMapTree } from "../core/index.js";
 import {
 	type FlexTreeNode,
 	type FlexTreeSequenceField,
-	getSchemaAndPolicy,
 	isFlexTreeNode,
 } from "../feature-libraries/index.js";
-import { prepareContentForHydration } from "./proxies.js";
 import {
 	normalizeAllowedTypes,
 	unannotateImplicitAllowedTypes,
@@ -40,7 +38,11 @@ import {
 	getOrCreateInnerNode,
 	type TreeNodeSchemaClass,
 } from "./core/index.js";
-import { type InsertableContent, mapTreeFromNodeData } from "./toMapTree.js";
+import {
+	type InsertableContent,
+	mapTreeFromNodeData,
+	prepareForInsertion,
+} from "./toMapTree.js";
 import {
 	getKernel,
 	UnhydratedFlexTreeNode,
@@ -864,20 +866,7 @@ abstract class CustomArrayNodeBase<const T extends ImplicitAllowedTypes>
 			.flatMap((c): InsertableContent[] =>
 				c instanceof IterableTreeArrayContent ? Array.from(c) : [c],
 			)
-			.map((c) =>
-				mapTreeFromNodeData(
-					c,
-					this.simpleSchema,
-					sequenceField.context.isHydrated()
-						? sequenceField.context.nodeKeyManager
-						: undefined,
-					getSchemaAndPolicy(sequenceField),
-				),
-			);
-
-		if (sequenceField.context.isHydrated()) {
-			prepareContentForHydration(mapTrees, sequenceField.context.checkout.forest);
-		}
+			.map((c) => prepareForInsertion(c, this.simpleSchema, sequenceField.context));
 
 		return mapTrees;
 	}

@@ -11,7 +11,6 @@ import {
 	type FlexTreeHydratedContext,
 	type FullSchemaPolicy,
 } from "../feature-libraries/index.js";
-import { tryDisposeTreeNode } from "../simple-tree/index.js";
 import { disposeSymbol } from "../util/index.js";
 
 import type { ITreeCheckout, ITreeCheckoutFork } from "./treeCheckout.js";
@@ -51,7 +50,6 @@ export class CheckoutFlexTreeView<out TCheckout extends ITreeCheckout = ITreeChe
 		public readonly checkout: TCheckout,
 		public readonly schema: FullSchemaPolicy,
 		public readonly nodeKeyManager: NodeIdentifierManager,
-		private readonly onDispose?: () => void,
 	) {
 		this.context = new Context(schema, this.checkout, nodeKeyManager);
 		contextToTreeViewMap.set(this.context, this);
@@ -61,12 +59,7 @@ export class CheckoutFlexTreeView<out TCheckout extends ITreeCheckout = ITreeChe
 		assert(!this.disposed, 0xb80 /* Double disposed */);
 		this.disposed = true;
 
-		for (const anchorNode of this.checkout.forest.anchors) {
-			tryDisposeTreeNode(anchorNode);
-		}
-
 		this.context[disposeSymbol]();
-		this.onDispose?.();
 	}
 
 	/**
