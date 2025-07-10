@@ -2037,6 +2037,192 @@ describe("SharedTree", () => {
 		});
 	});
 
+	it("set object twice", () => {
+		const sf = new SchemaFactory("test");
+		class MapSchema extends sf.object("MapSchema", {
+			x: sf.required(sf.number),
+			y: sf.required(sf.number),
+			z: sf.required(sf.number),
+		}) {}
+		class BugSchema extends sf.object("BugSchema", {
+			mapSchema: sf.map(MapSchema),
+		}) {}
+		const config = new TreeViewConfiguration({ schema: BugSchema });
+
+		const provider = new TestTreeProviderLite(2);
+		const tree1 = provider.trees[0];
+		const view1 = tree1.viewWith(config);
+		view1.initialize({ mapSchema: {} });
+
+		provider.synchronizeMessages();
+		const tree2 = provider.trees[1];
+		const view2 = tree2.viewWith(config);
+
+		const initialState: TreeSimpleContent = {
+			schema: BugSchema,
+			initialTree: { mapSchema: {} },
+		};
+
+		// Validate insertion
+		validateTreeContent(tree2.kernel.checkout, initialState);
+
+		const root1 = view1.root;
+		const root2 = view2.root;
+		// Insert nodes on both trees
+		root1.mapSchema.set("1", { x: 1, y: 2, z: 3 });
+		root1.mapSchema.set("1", { x: 1, y: 2, z: 3 });
+
+		provider.synchronizeMessages();
+	});
+
+	it("set two objects twice collaboratively", () => {
+		const sf = new SchemaFactory("test");
+		class MapSchema extends sf.object("MapSchema", {
+			x: sf.required(sf.number),
+			y: sf.required(sf.number),
+			z: sf.required(sf.number),
+		}) {}
+		class BugSchema extends sf.object("BugSchema", {
+			mapSchema: sf.map(MapSchema),
+		}) {}
+		const config = new TreeViewConfiguration({ schema: BugSchema });
+
+		// Connect two clients to the same Fluid session.
+		const provider = new TestTreeProviderLite(2);
+		const tree1 = provider.trees[0];
+		const view1 = tree1.viewWith(config);
+		view1.initialize({ mapSchema: {} });
+
+		provider.synchronizeMessages();
+		const tree2 = provider.trees[1];
+		const view2 = tree2.viewWith(config);
+
+		const root1 = view1.root;
+		const root2 = view2.root;
+
+		// From either client, add two BugSchema entries with IDs 1 and 2.
+		root1.mapSchema.set("1", { x: 1, y: 2, z: 3 });
+		root1.mapSchema.set("2", { x: 1, y: 2, z: 3 });
+		provider.synchronizeMessages();
+
+		// Before adding the third BugSchema entry, take the second client (the one not elected as summarizer) offline.
+		// Add the third BugSchema entry with the same ID from both clients (while the second client is offline).
+
+		root1.mapSchema.set("3", { x: 1, y: 2, z: 3 });
+		root2.mapSchema.set("3", { x: 1, y: 2, z: 3 });
+
+		// Allow the first client (the summarizer) to generate and upload a summary.
+		// Bring the second client back online.
+
+		provider.synchronizeMessages();
+	});
+
+	it("set map entries collaboratively", async () => {
+		const sf = new SchemaFactory("test");
+		class MapSchema extends sf.object("MapSchema", {
+			x: sf.required(sf.number),
+			y: sf.required(sf.number),
+			z: sf.required(sf.number),
+		}) {}
+		class BugSchema extends sf.object("BugSchema", {
+			mapSchema: sf.map(MapSchema),
+		}) {}
+		const config = new TreeViewConfiguration({ schema: BugSchema, enableSchemaValidation });
+
+		// Connect two clients to the same Fluid session.
+		const factory = configuredSharedTree({
+			jsonValidator: typeboxValidator,
+			forest: ForestTypeExpensiveDebug,
+		}).getFactory();
+		const provider = await TestTreeProvider.create(2, SummarizeType.onDemand, factory);
+		const tree1 = provider.trees[0];
+		const view1 = tree1.viewWith(config);
+		view1.initialize({ mapSchema: {} });
+
+		await provider.ensureSynchronized();
+		const tree2 = provider.trees[1];
+		const view2 = tree2.viewWith(config);
+
+		const root1 = view1.root;
+		const root2 = view2.root;
+
+		// From either client, add two BugSchema entries with IDs 1 and 2.
+		root1.mapSchema.set("1", { x: 1, y: 2, z: 3 });
+		root1.mapSchema.set("2", { x: 1, y: 2, z: 3 });
+		await provider.ensureSynchronized();
+
+		// Before adding the third BugSchema entry, take the second client (the one not elected as summarizer) offline.
+		// Add the third BugSchema entry with the same ID from both clients (while the second client is offline).
+
+		provider.containers[1].disconnect();
+		root1.mapSchema.set("3", { x: 2, y: 2, z: 3 });
+		root2.mapSchema.set("3", { x: 3, y: 2, z: 3 });
+
+		// Allow the first client (the summarizer) to generate and upload a summary.
+		await provider.ensureSynchronized(provider.containers[0]);
+		await provider.summarize();
+		await provider.ensureSynchronized(provider.containers[0]);
+
+		assert.equal(root1.mapSchema.get("3")?.x, 2);
+		assert.equal(root2.mapSchema.get("3")?.x, 3);
+
+		// Bring the second client back online.
+		provider.containers[1].connect();
+		// Resubmit op from second client.
+		await provider.ensureSynchronized();
+
+		assert.equal(root1.mapSchema.get("3")?.x, 3);
+		assert.equal(root2.mapSchema.get("3")?.x, 3);
+	});
+
+	it("set two objects twice collaboratively3", () => {
+		const sf = new SchemaFactory("test");
+		class MapSchema extends sf.object("MapSchema", {
+			x: sf.required(sf.number),
+			y: sf.required(sf.number),
+			z: sf.required(sf.number),
+		}) {}
+		class BugSchema extends sf.object("BugSchema", {
+			mapSchema: sf.map(MapSchema),
+		}) {}
+		const config = new TreeViewConfiguration({ schema: BugSchema });
+
+		// Connect two clients to the same Fluid session.
+		const provider = new TestTreeProviderLite(2);
+		const tree1 = provider.trees[0];
+		const view1 = tree1.viewWith(config);
+		view1.initialize({ mapSchema: {} });
+
+		provider.synchronizeMessages();
+		const tree2 = provider.trees[1];
+		const view2 = tree2.viewWith(config);
+
+		const root1 = view1.root;
+		const root2 = view2.root;
+
+		// From either client, add two BugSchema entries with IDs 1 and 2.
+		root1.mapSchema.set("1", { x: 1, y: 2, z: 3 });
+		root1.mapSchema.set("2", { x: 1, y: 2, z: 3 });
+		provider.synchronizeMessages();
+
+		// Before adding the third BugSchema entry, take the second client (the one not elected as summarizer) offline.
+		// Add the third BugSchema entry with the same ID from both clients (while the second client is offline).
+
+		tree2.containerRuntime.connected = false;
+
+		root1.mapSchema.set("3", { x: 1, y: 2, z: 3 });
+		root2.mapSchema.set("3", { x: 1, y: 2, z: 3 });
+
+		provider.synchronizeMessages();
+
+		tree2.containerRuntime.connected = true;
+
+		// Allow the first client (the summarizer) to generate and upload a summary.
+		// Bring the second client back online.
+
+		provider.synchronizeMessages();
+	});
+
 	describe("Stashed ops", () => {
 		// Fails because 'ranges finalized out of order' in deltaQueue.ts on the ensureSynchronized call.
 		// This doesn't bubble up b/c of issues using TestTreeProvider without proper listening to errors coming

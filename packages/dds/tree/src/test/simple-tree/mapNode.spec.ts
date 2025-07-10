@@ -5,9 +5,13 @@
 
 import { strict as assert } from "node:assert";
 
-import { SchemaFactory, type NodeFromSchema } from "../../simple-tree/index.js";
+import {
+	SchemaFactory,
+	TreeViewConfiguration,
+	type NodeFromSchema,
+} from "../../simple-tree/index.js";
 import { describeHydration } from "./utils.js";
-import { Tree } from "../../shared-tree/index.js";
+import { ForestTypeExpensiveDebug, independentView, Tree } from "../../shared-tree/index.js";
 // eslint-disable-next-line import/no-internal-modules
 import { isTreeNode } from "../../simple-tree/core/index.js";
 
@@ -211,6 +215,24 @@ describeHydration(
 			assert.equal(root.objectMap.get("foo")?.content, o.content);
 		});
 
+		it("set object twice", () => {
+			const sf = new SchemaFactory("test");
+			class MapSchema extends sf.object("MapSchema", {
+				x: sf.required(sf.number),
+				y: sf.required(sf.number),
+				z: sf.required(sf.number),
+			}) {}
+			class BugSchema extends sf.object("BugSchema", {
+				mapSchema: sf.map(MapSchema),
+			}) {}
+
+			const root = init(BugSchema, { mapSchema: {} });
+			const bug1 = new MapSchema({ x: 1, y: 2, z: 3 });
+			root.mapSchema.set("1", bug1);
+			// Errors as expected for hydrated nodes
+			root.mapSchema.set("1", bug1);
+		});
+
 		it("delete", () => {
 			const root = init(schema, initialTree);
 			// Delete existing value
@@ -257,6 +279,23 @@ describeHydration(
 				const fromRecord = new Root({ data: { x: 5 } });
 				assert.deepEqual([...fromRecord.data], data);
 			});
+		});
+
+		it("set object twice in independentView", () => {
+			const sf = new SchemaFactory("test");
+			class MapSchema extends sf.object("MapSchema", {
+				x: sf.required(sf.number),
+				y: sf.required(sf.number),
+				z: sf.required(sf.number),
+			}) {}
+			class BugSchema extends sf.object("BugSchema", {
+				mapSchema: sf.map(MapSchema),
+			}) {}
+			const config = new TreeViewConfiguration({ schema: BugSchema });
+			const view = independentView(config, { forest: ForestTypeExpensiveDebug });
+			view.initialize({ mapSchema: {} });
+			view.root.mapSchema.set("1", new MapSchema({ x: 1, y: 2, z: 3 }));
+			view.root.mapSchema.set("1", new MapSchema({ x: 1, y: 2, z: 3 }));
 		});
 	},
 );
