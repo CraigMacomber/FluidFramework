@@ -240,7 +240,7 @@ export class UnknownUnhydratedFlexTreeNode extends UnhydratedFlexTreeNodeBase {
 	}
 
 	protected override createField(key: FieldKey): FlexTreeField {
-		return new UnknownFlexTreeField([], key);
+		return new UnknownFlexTreeField([], key, FieldKinds.optional.identifier);
 	}
 }
 
@@ -437,8 +437,9 @@ export class UnknownFlexTreeField
 	public constructor(
 		public readonly children: readonly UnknownUnhydratedFlexTreeNode[],
 		key: FieldKey,
+		kind: typeof FieldKinds.optional.identifier | typeof FieldKinds.sequence.identifier,
 	) {
-		super(unknownContext, FieldKinds.sequence.identifier, key, children);
+		super(unknownContext, kind, key, children);
 	}
 }
 
