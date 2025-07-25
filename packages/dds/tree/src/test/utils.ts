@@ -121,6 +121,8 @@ import {
 	type MinimalMapTreeNodeView,
 	jsonableTreeFromCursor,
 	cursorForMapTreeNode,
+	type MapTreeNodeViewGeneric,
+	type FlexTreeNode,
 } from "../feature-libraries/index.js";
 import {
 	type CheckoutEvents,
@@ -1479,7 +1481,9 @@ export function fieldCursorFromInsertable<
 		data as InsertableField<UnsafeUnknownSchema>,
 		schema,
 	);
-	return cursorForMapTreeField(mapTree === undefined ? [] : [mapTree]);
+	return cursorForMapTreeField<MapTreeNodeViewGeneric<FlexTreeNode>>(
+		mapTree === undefined ? [] : [mapTree],
+	);
 }
 
 /**
