@@ -2741,7 +2741,7 @@ describe("treeNodeApi", () => {
 		});
 
 		describe("exportVerbose", () => {
-			it("TODO: unknown optional fields", () => {
+			it("unknown optional fields", () => {
 				const sf1 = new SchemaFactoryAlpha("com.example");
 				class PointUnknown extends sf1.objectAlpha(
 					"Point",
@@ -2778,12 +2778,10 @@ describe("treeNodeApi", () => {
 
 				// TODO AB#43548: provide and test a way to export with stored keys without unknown optional fields.
 
-				// TODO AB#43548: this should not assert.
-				assert.throws(
-					() => TreeAlpha.exportVerbose(node),
-					// Currently errors failing to look up the property key in the schema for the unknown field.
-					(e: Error) => validateAssertionError(e, "missing property key"),
-				);
+				assert.deepEqual(TreeAlpha.exportVerbose(node, { useStoredKeys: false }), {
+					type: PointUnknown.identifier,
+					fields: {},
+				});
 			});
 
 			describe("test-documents", () => {
