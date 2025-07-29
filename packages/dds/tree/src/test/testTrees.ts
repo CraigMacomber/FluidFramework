@@ -82,6 +82,9 @@ interface TestTree {
  * Content for a test document, which can have a different stored schema than just toStoredSchema(schema).
  */
 export interface TestDocument extends TestTree, Omit<TestSimpleTree, "root"> {
+	/**
+	 * True if and only if the document had content in unknown optional fields.
+	 */
 	readonly hasUnknownOptionalFields: boolean;
 }
 
@@ -416,7 +419,8 @@ export const testDocuments: readonly TestDocument[] = [
 		ambiguous: false,
 		name: "AllowsUnknownOptionalFields",
 		schema: HasUnknownOptionalFields,
-		hasUnknownOptionalFields: true,
+		// Unknown optional fields are allowed but empty in this document.
+		hasUnknownOptionalFields: false,
 		policy: defaultSchemaPolicy,
 		schemaData: toStoredSchema(HasUnknownOptionalFieldsV2),
 		treeFactory: () =>

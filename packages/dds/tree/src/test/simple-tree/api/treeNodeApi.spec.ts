@@ -2404,14 +2404,26 @@ describe("treeNodeApi", () => {
 
 			// Create a new node and insert it.
 			const innerPoint1 = new TestPoint({ x: 2, y: 2 });
+			{
+				const clonedPoint1 = TreeBeta.clone<typeof TestPoint>(innerPoint1);
+				assert.deepEqual(innerPoint1, clonedPoint1, "Inner node not cloned properly");
+				assert.notEqual(
+					innerPoint1,
+					clonedPoint1,
+					"Cloned inner node object should be different",
+				);
+			}
+
 			rectangle.innerPoints.insertAtEnd(innerPoint1);
 
 			// Clone the new node inside the rectangle.
 			const point1 = rectangle.innerPoints.at(0);
-			assert(point1 !== undefined, "Point not inserted correctly");
-			const clonedPoint1 = TreeBeta.clone<typeof TestPoint>(point1);
-			assert.deepEqual(point1, clonedPoint1, "Inner node not cloned properly");
-			assert.notEqual(point1, clonedPoint1, "Cloned inner node object should be different");
+			assert(point1 === innerPoint1, "Point not inserted correctly");
+			{
+				const clonedPoint1 = TreeBeta.clone<typeof TestPoint>(point1);
+				assert.deepEqual(point1, clonedPoint1, "Inner node not cloned properly");
+				assert.notEqual(point1, clonedPoint1, "Cloned inner node object should be different");
+			}
 
 			// Modify the original rectangle and validate that the clone is not modified.
 			rectangle.topLeft = new TestPoint({ x: 2, y: 2 });
@@ -2844,10 +2856,21 @@ describe("treeNodeApi", () => {
 							// Stored keys
 							{
 								const exported = TreeAlpha.exportVerbose(view.root, { useStoredKeys: true });
-								const imported = TreeAlpha.importVerbose(view.schema, exported, {
-									useStoredKeys: true,
-								});
-								expectTreesEqual(view.root, imported);
+								if (testCase.hasUnknownOptionalFields) {
+									// is not defined in the schema
+									assert.throws(
+										() =>
+											TreeAlpha.importVerbose(view.schema, exported, {
+												useStoredKeys: true,
+											}),
+										validateUsageError(/is not defined in the schema/),
+									);
+								} else {
+									const imported = TreeAlpha.importVerbose(view.schema, exported, {
+										useStoredKeys: true,
+									});
+									expectTreesEqual(view.root, imported);
+								}
 							}
 
 							// property keys

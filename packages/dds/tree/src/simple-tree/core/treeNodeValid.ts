@@ -10,7 +10,7 @@ import { type FlexTreeNode, isFlexTreeNode } from "../../feature-libraries/index
 
 import { markEager } from "./flexList.js";
 import { inPrototypeChain, privateToken, TreeNode } from "./treeNode.js";
-import type { UnhydratedFlexTreeNode } from "./unhydratedFlexTree.js";
+import { UnhydratedFlexTreeNode } from "./unhydratedFlexTree.js";
 import {
 	NodeKind,
 	type TreeNodeSchema,
@@ -193,10 +193,14 @@ export abstract class TreeNodeValid<TInput> extends TreeNode {
 		);
 
 		const result = schema.prepareInstance(this, node);
+		const context =
+			node instanceof UnhydratedFlexTreeNode
+				? node.simpleContext
+				: cache.oneTimeInitialized.context;
 		// The TreeNodeKernel associates itself the TreeNode (result here, not node) so it can be looked up later via getKernel.
 		// If desired this could be put in a non-enumerable symbol property for lookup instead, but that gets messy going through proxies,
 		// so just relying on the WeakMap seems like the cleanest approach.
-		new TreeNodeKernel(result, schema, node, cache.oneTimeInitialized.context);
+		new TreeNodeKernel(result, schema, node, context);
 
 		return result;
 	}
