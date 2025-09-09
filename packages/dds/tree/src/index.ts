@@ -405,3 +405,13 @@ export { asAlpha, asBeta } from "./api.js";
 
 export { TextAsTree, FormattedTextAsTree } from "./text/index.js";
 export { ExtensibleUnionNode } from "./extensibleUnionNode.js";
+
+export {
+	treeDataStoreKind,
+	dataStoreKind,
+} from "./treeDataStore.js";
+export type {
+	DataStoreOptions,
+	TreeDataStoreOptions,
+	Creator,
+} from "./treeDataStore.js";
