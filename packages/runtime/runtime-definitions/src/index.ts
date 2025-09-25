@@ -102,8 +102,6 @@ export {
 	type StageControlsInternal,
 	asLegacyAlpha,
 } from "./stagingMode.js";
-
-export { createContainer } from "./serviceClient.js";
 export type {
 	DataStoreKind,
 	FluidContainer,
@@ -111,4 +109,5 @@ export type {
 	ServiceOptions,
 	FluidContainerAttached,
 	Registry,
+	FluidContainerWithService,
 } from "./serviceClient.js";
