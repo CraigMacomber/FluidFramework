@@ -405,9 +405,3 @@ export { ExtensibleUnionNode } from "./extensibleUnionNode.js";
 
 export { treeDataStoreKind } from "./treeDataStore.js";
 export type { TreeDataStoreOptions } from "./treeDataStore.js";
-export { dataStoreKind } from "./dataStoreKind.js";
-export type {
-	DataStoreOptions,
-	SharedObjectCreator,
-	SharedObjectRegistry,
-} from "./dataStoreKind.js";
