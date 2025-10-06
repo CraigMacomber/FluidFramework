@@ -403,13 +403,11 @@ export { asAlpha, asBeta } from "./api.js";
 export { TextAsTree, FormattedTextAsTree } from "./text/index.js";
 export { ExtensibleUnionNode } from "./extensibleUnionNode.js";
 
-export {
-	treeDataStoreKind,
-	dataStoreKind,
-} from "./treeDataStore.js";
+export { treeDataStoreKind } from "./treeDataStore.js";
+export type { TreeDataStoreOptions } from "./treeDataStore.js";
+export { dataStoreKind } from "./dataStoreKind.js";
 export type {
 	DataStoreOptions,
-	TreeDataStoreOptions,
-	Creator,
+	SharedObjectCreator,
 	SharedObjectRegistry,
-} from "./treeDataStore.js";
+} from "./dataStoreKind.js";
