@@ -833,7 +833,10 @@ export interface LoadContainerRuntimeParams {
 export async function loadContainerRuntime(
 	params: LoadContainerRuntimeParams,
 ): Promise<IContainerRuntime & IRuntime> {
-	return ContainerRuntime.loadRuntime(params);
+	return ContainerRuntime.loadRuntime({
+		...params,
+		registry: new FluidDataStoreRegistry(params.registryEntries),
+	});
 }
 
 /**
@@ -917,19 +920,13 @@ export class ContainerRuntime
 	 * `loadRuntime` could be removed (replaced by `loadRuntime2` which could be renamed back to `loadRuntime`).
 	 */
 	public static async loadRuntime(
-		params: LoadContainerRuntimeParams & {
-			/**
-			 * Constructor to use to create the ContainerRuntime instance.
-			 * @remarks
-			 * Defaults to {@link ContainerRuntime}.
-			 */
+		params: Omit<LoadContainerRuntimeParams, "registryEntries" | "runtimeOptions"> & {
+			registry: IFluidDataStoreRegistry;
 			containerRuntimeCtor?: typeof ContainerRuntime;
+			runtimeOptions?: IContainerRuntimeOptionsInternal;
 		},
 	): Promise<ContainerRuntime> {
-		return ContainerRuntime.loadRuntime2({
-			...params,
-			registry: new FluidDataStoreRegistry(params.registryEntries),
-		}).then((r) => r.runtime);
+		return ContainerRuntime.loadRuntime2(params).then((r) => r.runtime);
 	}
 
 	/**
