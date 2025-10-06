@@ -7,6 +7,7 @@ import { IContainerContext, IRuntime } from "@fluidframework/container-definitio
 import {
 	ContainerRuntime,
 	DefaultSummaryConfiguration,
+	FluidDataStoreRegistry,
 	type IContainerRuntimeOptionsInternal,
 } from "@fluidframework/container-runtime/internal";
 import {
@@ -173,10 +174,10 @@ export const createTestContainerRuntimeFactory = (
 			// Actual customers / apps should not be dependent on stability of this API, but this code is, at least for now.
 			return containerRuntimeCtor.loadRuntime({
 				context,
-				registryEntries: [
+				registry: new FluidDataStoreRegistry([
 					["default", Promise.resolve(this.dataStoreFactory)],
 					[this.type, Promise.resolve(this.dataStoreFactory)],
-				],
+				]),
 				// eslint-disable-next-line import-x/no-deprecated
 				requestHandler: buildRuntimeRequestHandler(getDefaultObject, ...this.requestHandlers),
 				provideEntryPoint,
