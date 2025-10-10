@@ -103,11 +103,21 @@ export {
 	asLegacyAlpha,
 } from "./stagingMode.js";
 export type {
+	Registry,
+	RegistryKey,
+} from "./registry.js";
+export {
+	registryLookup,
+	basicKey,
+} from "./registry.js";
+
+export type {
 	DataStoreKind,
 	FluidContainer,
 	ServiceClient,
 	ServiceOptions,
 	FluidContainerAttached,
-	Registry,
 	FluidContainerWithService,
 } from "./serviceClient.js";
+
+export { DataStoreKindImplementation } from "./serviceClient.js";
