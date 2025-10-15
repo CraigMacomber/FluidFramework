@@ -93,6 +93,7 @@ export type {
 	SharedObjectCreator,
 	SharedObjectRegistry,
 	SharedObjectKey,
+	DataStoreContext,
 } from "@fluidframework/shared-object-base/internal";
 
 // End of basic public+beta+alpha exports - nothing above this line should
