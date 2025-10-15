@@ -1354,6 +1354,9 @@ export const SharedMap: ISharedObjectKind<ISharedMap> & SharedObjectKind<IShared
 // @beta @legacy
 export type SharedMap = ISharedMap;
 
+// @public @input
+export type SharedObjectKey<T> = RegistryKey<SharedObjectKind<T>, SharedObjectKind>;
+
 // @public @sealed
 export interface SharedObjectKind<out TSharedObject = unknown> extends SharedObjectKey<TSharedObject>, ErasedType<readonly ["SharedObjectKind", TSharedObject]> {
     is(value: IFluidLoadable): value is IFluidLoadable & TSharedObject;

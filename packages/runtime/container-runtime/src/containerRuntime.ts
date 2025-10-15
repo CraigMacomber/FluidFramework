@@ -834,10 +834,7 @@ export interface LoadContainerRuntimeParams {
 export async function loadContainerRuntime(
 	params: LoadContainerRuntimeParams,
 ): Promise<IContainerRuntime & IRuntime> {
-	return ContainerRuntime.loadRuntime({
-		...params,
-		registry: new FluidDataStoreRegistry(params.registryEntries),
-	});
+	return ContainerRuntime.loadRuntime(params);
 }
 
 /**
