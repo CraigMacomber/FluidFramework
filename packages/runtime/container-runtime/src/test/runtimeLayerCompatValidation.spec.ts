@@ -33,7 +33,6 @@ import {
 import Sinon from "sinon";
 
 import { ContainerRuntime } from "../containerRuntime.js";
-import { FluidDataStoreRegistry } from "../dataStoreRegistry.js";
 import { pkgVersion } from "../packageVersion.js";
 import {
 	loaderSupportRequirementsForRuntime,
@@ -122,7 +121,7 @@ async function createAndLoadRuntime(
 
 	await ContainerRuntime.loadRuntime({
 		context: mockContext as IContainerContext,
-		registry: new FluidDataStoreRegistry([]),
+		registryEntries: [],
 		existing: false,
 		provideEntryPoint: async () => ({
 			myProp: "myValue",
