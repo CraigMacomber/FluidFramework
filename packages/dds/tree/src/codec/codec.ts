@@ -449,16 +449,9 @@ export function withSchemaValidation<
 }
 
 /**
- * Versions of Fluid Framework client packages.
+ * A collection of {@link @fluidframework/container-runtime#MinimumVersionForCollab}s which are significant to tree
+ * along with documentation of what is enabled in that version.
  * @remarks
- * Used to express compatibility requirements by indicating the oldest version with which compatibility must be maintained.
- *
- * When no compatibility-impacting change is made in a given version, the value associated with its enum entry may point to the older version which it's fully compatible with.
- * Note that this can change if a future version of the framework introduces an option to use something which is only supported at a particular version. In which case, the values of the enum may shift,
- * but the semantics of keys in this enum will not change.
- *
- * Do not depend on the value of this enums's entries: only depend on the keys (enum members) themselves.
- *
  * Some release may also be omitted if there is currently no need to express that specific version.
  * If the need arises, they might be added in the future.
  *
@@ -467,27 +460,11 @@ export function withSchemaValidation<
  * For example, document if there is an encoding efficiency improvement of oping into that version or newer.
  * Versions with no notable impact can be omitted.
  *
- * This scheme assumes a single version will always be enough to communicate compatibility.
- * For this to work, compatibility has to be strictly increasing.
- * If this is violated (for example a subset of incompatible features from 3.x that are not in 3.0 are back ported to 2.x),
- * a more complex scheme may be needed to allow safely opting into incompatible features in those cases:
- * such a system can be added if/when its needed since it will be opt in and thus non-breaking.
- *
- * TODO: this should likely be defined higher in the stack and specified when creating the container, possibly as part of its schema.
- * TODO: compatibility requirements for how this enum can and cannot be changed should be clarified when/if it's used across multiple layers in the stack.
- * For example, if needed, would adding more leading zeros to the minor version break things.
+ * TODO: This should be renamed to something like `significantTreeVersions`, and linked from `MinimumVersionForCollab`
+ * or otherwise integrated into however it ends up documenting the significant of different versions.
  * @alpha
  */
 export const FluidClientVersion = {
-	/**
-	 * Fluid Framework Client 1.4 and newer.
-	 * @remarks
-	 * This opts into support for the 1.4 LTS branch.
-	 * @privateRemarks
-	 * As long as this code is in Tree, there is no reason to have this option as SharedTree did not exist in 1.4.
-	 */
-	// v1_4 = 1.004,
-
 	/**
 	 * Fluid Framework Client 2.0 and newer.
 	 */
