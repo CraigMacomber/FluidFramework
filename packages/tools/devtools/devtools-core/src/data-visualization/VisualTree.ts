@@ -63,7 +63,7 @@ export interface VisualNodeBase {
 	 *
 	 * @remarks
 	 *
-	 * This will generally be {@link VisualNodeKind}, but for forwards/backwards compatability reasons,
+	 * This will generally be {@link VisualNodeKind}, but for forwards/backwards compatibility reasons,
 	 * we allow this to be an arbitrary string.
 	 * Consumers of this value should attempt to handle unrecognized values gracefully.
 	 */
