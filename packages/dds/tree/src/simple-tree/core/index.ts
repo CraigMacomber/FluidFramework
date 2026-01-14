@@ -31,8 +31,28 @@ export {
 	privateToken,
 	inPrototypeChain,
 } from "./treeNode.js";
+
+import { NodeKind as NodeKindInner } from "./treeNodeSchema.js";
+
+export namespace NodeKind {
+	export type Array = NodeKindInner.Array;
+	export const Array = NodeKindInner.Array;
+	export type Leaf = NodeKindInner.Leaf;
+	export const Leaf = NodeKindInner.Leaf;
+	export type Map = NodeKindInner.Map;
+	export const Map = NodeKindInner.Map;
+	export type Object = NodeKindInner.Object;
+	export const Object = NodeKindInner.Object;
+	export type Record = NodeKindInner.Record;
+	export const Record = NodeKindInner.Record;
+}
+
+export type NodeKind = NodeKindInner;
+
+type _t = NodeKind.Array;
+
 export {
-	NodeKind,
+	// NodeKind,
 	isTreeNodeSchemaClass,
 	privateDataSymbol,
 	getTreeNodeSchemaPrivateData,

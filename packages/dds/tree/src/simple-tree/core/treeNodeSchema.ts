@@ -493,6 +493,13 @@ export function getTreeNodeSchemaPrivateData(
  */
 export enum NodeKind {
 	/**
+	 * @deprecated Placeholder to prevent exhaustive type matches. Do not use.
+	 * @privateRemarks
+	 * See {@link preventExhaustiveEnumTypeMatch} for more details.
+	 */
+	_DoNotUse = 0 as number,
+
+	/**
 	 * A node which serves as a map, storing children under string keys.
 	 */
 	Map = 0,
@@ -514,6 +521,25 @@ export enum NodeKind {
 	 * A node which serves as a record, storing children under string keys.
 	 */
 	Record = 4,
+}
+
+preventExhaustiveEnumTypeMatch(NodeKind);
+
+/**
+ * ... document this.
+ * Include note about putting _DoNotUse first and using a value that collides so its reverse mapping if present gets overwritten.
+ */
+function preventExhaustiveEnumTypeMatch(enumObject: { readonly _DoNotUse: unknown }): void {
+	Object.defineProperty(enumObject, "_DoNotUse", {
+		get: () => {
+			throw new TypeError(
+				`Do not use "_DoNotUse": it is a placeholder to prevent exhaustive type matches.`,
+			);
+		},
+		enumerable: false,
+		configurable: false,
+		writable: false,
+	});
 }
 
 /**

@@ -169,7 +169,9 @@ export type ValidateRecursiveSchemaTemplate<T extends TreeNodeSchemaClass> =
 				readonly [P in string]: InsertableTreeNodeFromImplicitAllowedTypes<T>;
 			};
 			[NodeKind.Leaf]: unknown;
-		}[T["kind"]],
+		}[T["kind"] extends NodeKind.Object | NodeKind.Array | NodeKind.Map | NodeKind.Record
+			? T["kind"]
+			: never],
 		// ImplicitlyConstructable: recursive types are currently not implicitly constructable.
 		false,
 		// Info: What's passed to the method to create the schema. Constraining these here should be about as effective as if the actual constraints existed on the actual method itself.
@@ -179,7 +181,9 @@ export type ValidateRecursiveSchemaTemplate<T extends TreeNodeSchemaClass> =
 			[NodeKind.Map]: ImplicitAllowedTypes;
 			[NodeKind.Record]: ImplicitAllowedTypes;
 			[NodeKind.Leaf]: unknown;
-		}[T["kind"]]
+		}[T["kind"] extends NodeKind.Object | NodeKind.Array | NodeKind.Map | NodeKind.Record
+			? T["kind"]
+			: never]
 	>;
 
 /* eslint-disable @fluid-internal/fluid/no-hyphen-after-jsdoc-tag -- false positive AB#50920 */
