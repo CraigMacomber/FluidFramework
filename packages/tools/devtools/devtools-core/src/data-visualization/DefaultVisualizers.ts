@@ -21,19 +21,13 @@ import { SharedMatrix } from "@fluidframework/matrix/internal";
 import { SharedString } from "@fluidframework/sequence/internal";
 import type { ISharedObject, IChannelView } from "@fluidframework/shared-object-base/internal";
 import type { ITreeInternal } from "@fluidframework/tree/internal";
-import { FieldKind, SharedTree } from "@fluidframework/tree/internal";
+import { SharedTree } from "@fluidframework/tree/internal";
 
 import { EditType } from "../CommonInterfaces.js";
 import { getKeyForFluidObject } from "../FluidObjectKey.js";
 
 import type { VisualizeChildData, VisualizeSharedObject } from "./DataVisualization.js";
-import {
-	concatenateTypes,
-	determineNodeKind,
-	toVisualTree,
-	visualizeSharedTreeBySchema,
-} from "./SharedTreeVisualizer.js";
-import type { VisualSharedTreeNode } from "./VisualSharedTreeTypes.js";
+import { visualizeSharedTreeField } from "./SharedTreeVisualizer.js";
 import {
 	type FluidObjectNode,
 	type FluidObjectTreeNode,
@@ -307,62 +301,27 @@ export const visualizeSharedTree: VisualizeSharedObject = async (
 	const sharedTree = sharedObject as IChannelView as ITreeInternal;
 	const objectId = getKeyForFluidObject(sharedTree);
 
-	// Root node of the SharedTree's content.
-	const treeView = sharedTree.exportVerbose();
+	// Root of the SharedTree's content.
+	const rootField = sharedTree.exportVerbose();
 	// All schema definitions for the SharedTree.
 	const treeSimpleSchema = sharedTree.exportSimpleSchema();
 	const treeDefinitions = treeSimpleSchema.definitions;
 
-	/**
-	 * {@link visualizeSharedTreeBySchema} passes `allowedTypes` into co-recursive functions while constructing the visual representation.
-	 * Since the {@link SimpleTreeSchema.allowedTypes} of each children node is only accessible at the parent field level,
-	 * each node's allowed types are computed at the parent field level.
-	 */
-	const allowedTypes = new Set(treeSimpleSchema.root.simpleAllowedTypes.keys());
-	const isRequired = treeSimpleSchema.root.kind === FieldKind.Required;
-
-	if (treeView === undefined) {
-		return {
-			fluidObjectId: objectId,
-			typeMetadata: "SharedTree",
-			nodeKind: VisualNodeKind.FluidTreeNode,
-			tooltipContents: {
-				schema: {
-					nodeKind: VisualNodeKind.TreeNode,
-					children: {
-						allowedTypes: {
-							nodeKind: VisualNodeKind.ValueNode,
-							value: concatenateTypes(allowedTypes),
-						},
-						isRequired: {
-							nodeKind: VisualNodeKind.ValueNode,
-							value: isRequired.toString(),
-						},
-					},
-				},
-			},
-			children: {},
-		};
-	}
-
 	// Create a root field visualization that shows the allowed types at the root
-	const visualTreeRepresentation: VisualSharedTreeNode = await visualizeSharedTreeBySchema(
-		treeView,
+	const visualTree = await visualizeSharedTreeField(
+		rootField,
 		treeDefinitions,
-		{ allowedTypes, isRequired },
+		treeSimpleSchema.root,
 		visualizeChildData,
 	);
 
-	// Maps the `visualTreeRepresentation` in the format compatible to {@link visualizeChildData} function.
-	const visualTree = toVisualTree(visualTreeRepresentation);
-
 	// TODO: Validate the type casting.
-	const visualTreeResult: FluidObjectNode = {
+	const visualTreeResult: FluidObjectTreeNode = {
 		...visualTree,
 		fluidObjectId: objectId,
 		typeMetadata: "SharedTree",
-		nodeKind: determineNodeKind(visualTree.nodeKind),
-	} as unknown as FluidObjectNode;
+		nodeKind: VisualNodeKind.FluidTreeNode,
+	} as unknown as FluidObjectTreeNode;
 
 	return visualTreeResult;
 };
