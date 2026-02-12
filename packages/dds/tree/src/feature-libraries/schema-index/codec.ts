@@ -22,7 +22,7 @@ import {
 	encodeFieldSchemaV2,
 	storedSchemaDecodeDispatcher,
 } from "../../core/index.js";
-import { brand } from "../../util/index.js";
+import { brand, type JsonCompatibleReadOnlyObject } from "../../util/index.js";
 
 import { Format as FormatV1 } from "./formatV1.js";
 import { Format as FormatV2 } from "./formatV2.js";
@@ -125,8 +125,9 @@ function decodeV2(f: FormatV2): TreeStoredSchema {
 /**
  * Creates a codec which performs synchronous monolithic encoding of schema content.
  */
-export const schemaCodecBuilder = ClientVersionDispatchingCodecBuilder.build("Schema", {
-	[lowestMinVersionForCollab]: {
+export const schemaCodecBuilder = ClientVersionDispatchingCodecBuilder.build("Schema", [
+	{
+		minVersionForCollab: lowestMinVersionForCollab,
 		formatVersion: SchemaFormatVersion.v1,
 		codec: {
 			encode: (data: TreeStoredSchema) => encodeRepoV1(data),
@@ -134,7 +135,8 @@ export const schemaCodecBuilder = ClientVersionDispatchingCodecBuilder.build("Sc
 			schema: FormatV1,
 		},
 	},
-	[FluidClientVersion.v2_43]: {
+	{
+		minVersionForCollab: FluidClientVersion.v2_43,
 		formatVersion: SchemaFormatVersion.v2,
 		codec: {
 			encode: (data: TreeStoredSchema) => encodeRepoV2(data),
@@ -142,4 +144,4 @@ export const schemaCodecBuilder = ClientVersionDispatchingCodecBuilder.build("Sc
 			schema: FormatV2,
 		},
 	},
-});
+]).retypeEncodedUnsafe<JsonCompatibleReadOnlyObject>();

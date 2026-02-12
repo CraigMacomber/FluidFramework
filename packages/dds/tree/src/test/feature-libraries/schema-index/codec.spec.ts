@@ -11,6 +11,7 @@ import {
 	currentVersion,
 	makeCodecFamily,
 	type CodecWriteOptions,
+	type IJsonCodec,
 } from "../../../codec/index.js";
 import {
 	SchemaFormatVersion,
@@ -42,8 +43,8 @@ const codecOptions: CodecWriteOptions = {
 };
 
 const schemaCodecs = makeCodecFamily(
-	schemaCodecBuilder.applyOptions(codecOptions).map(([_version, codec]) => {
-		return [codec.formatVersion, codec.codec] as const;
+	schemaCodecBuilder.applyOptions(codecOptions).map((codec) => {
+		return [codec.formatVersion, codec.codec as IJsonCodec<TreeStoredSchema>] as const;
 	}),
 );
 const codecV1 = makeSchemaCodec(codecOptions, SchemaFormatVersion.v1);

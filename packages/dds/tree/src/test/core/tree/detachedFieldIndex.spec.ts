@@ -319,7 +319,7 @@ describe("DetachedFieldIndex Codecs", () => {
 			unfinalizedIdCompressor,
 		)) {
 			describe(name, () => {
-				for (const format of detachedFieldIndexCodecBuilder.registry.values()) {
+				for (const format of detachedFieldIndexCodecBuilder.registry) {
 					const version = format.formatVersion;
 					if (validFor !== undefined && version !== undefined && !validFor.has(version)) {
 						continue;
@@ -333,7 +333,7 @@ describe("DetachedFieldIndex Codecs", () => {
 							idCompressor,
 						});
 						const encoded = codec.encode(data);
-						takeJsonSnapshot(encoded);
+						takeJsonSnapshot(encoded as JsonCompatibleReadOnly);
 					});
 				}
 			});

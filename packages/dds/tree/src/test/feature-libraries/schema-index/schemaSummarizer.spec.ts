@@ -48,13 +48,14 @@ describe("schemaSummarizer", () => {
 	describe("encodeTreeSchema", () => {
 		useSnapshotDirectory("encodeTreeSchema");
 
-		for (const [minVersionForCollab, schemaFormat] of schemaCodecBuilder.registry) {
+		for (const schemaFormat of schemaCodecBuilder.registry) {
 			const encode = (schema: TreeStoredSchema): JsonCompatibleReadOnly => {
+				assert(schemaFormat.minVersionForCollab !== "unstable");
 				const codec = schemaFormat.codec({
 					jsonValidator: FormatValidatorBasic,
-					minVersionForCollab,
+					minVersionForCollab: schemaFormat.minVersionForCollab,
 				});
-				const result: JsonCompatibleReadOnly = codec.encode(schema);
+				const result: JsonCompatibleReadOnly = codec.encode(schema) as JsonCompatibleReadOnly;
 				return result;
 			};
 

@@ -38,16 +38,18 @@ describe("versioned Codecs", () => {
 			schema: Versioned,
 		};
 
-		const builder = ClientVersionDispatchingCodecBuilder.build("Test", {
-			[lowestMinVersionForCollab]: {
+		const builder = ClientVersionDispatchingCodecBuilder.build("Test", [
+			{
+				minVersionForCollab: lowestMinVersionForCollab,
 				formatVersion: 1,
 				codec: codecV1,
 			},
-			[FluidClientVersion.v2_43]: {
+			{
+				minVersionForCollab: FluidClientVersion.v2_43,
 				formatVersion: 2,
 				codec: () => codecV2,
 			},
-		});
+		]);
 
 		it("round trip", () => {
 			const codec1 = builder.build({
@@ -69,8 +71,8 @@ describe("versioned Codecs", () => {
 
 			assert.throws(
 				() => codec1.decode({ version: 3, value2: 42 }),
-				validateUsageError(`Unsupported version 3 encountered while decoding Test data. Supported versions for this data are: 1, 2.
-The client which encoded this data likely specified an "minVersionForCollab" value which corresponds to a version newer than the version of this client ("${pkgVersion}").`),
+				validateUsageError(`Unsupported version 3 encountered while decoding Test data. Supported versions for this data are: [1,2].
+The client which encoded this data likely specified an "minVersionForCollab" value which corresponds to a version newer than the version of this client ("2.83.0").`),
 			);
 		});
 	});

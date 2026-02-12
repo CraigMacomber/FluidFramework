@@ -350,14 +350,15 @@ export type JsonCompatibleObject<TExtra = never> = { [P in string]?: JsonCompati
  * but instead mostly restricts access to it.
  * @alpha
  */
-export type JsonCompatibleReadOnly =
+export type JsonCompatibleReadOnly<TExtra = never> =
 	| string
 	| number
 	| boolean
 	// eslint-disable-next-line @rushstack/no-new-null
 	| null
-	| readonly JsonCompatibleReadOnly[]
-	| JsonCompatibleReadOnlyObject;
+	| readonly JsonCompatibleReadOnly<TExtra>[]
+	| JsonCompatibleReadOnlyObject<TExtra>
+	| TExtra;
 
 /**
  * Use for readonly view of Json compatible data.
@@ -366,7 +367,9 @@ export type JsonCompatibleReadOnly =
  * but instead mostly restricts access to it.
  * @alpha
  */
-export type JsonCompatibleReadOnlyObject = { readonly [P in string]?: JsonCompatibleReadOnly };
+export type JsonCompatibleReadOnlyObject<TExtra = never> = {
+	readonly [P in string]?: JsonCompatibleReadOnly<TExtra>;
+};
 
 /**
  * @remarks TODO: Audit usage of this type in schemas, evaluating whether it is necessary and performance

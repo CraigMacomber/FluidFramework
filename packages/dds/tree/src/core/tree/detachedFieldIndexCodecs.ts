@@ -11,6 +11,7 @@ import {
 	type CodecWriteOptions,
 	FluidClientVersion,
 } from "../../codec/index.js";
+import type { JsonCompatibleReadOnly } from "../../util/index.js";
 import type { RevisionTagCodec } from "../rebase/index.js";
 
 import { makeDetachedNodeToFieldCodecV1 } from "./detachedFieldIndexCodecV1.js";
@@ -24,16 +25,18 @@ type BuildData = CodecWriteOptions & {
 
 export const detachedFieldIndexCodecBuilder = ClientVersionDispatchingCodecBuilder.build(
 	"DetachedFieldIndex",
-	{
-		[lowestMinVersionForCollab]: {
+	[
+		{
+			minVersionForCollab: lowestMinVersionForCollab,
 			formatVersion: DetachedFieldIndexFormatVersion.v1,
 			codec: (buildData: BuildData) =>
 				makeDetachedNodeToFieldCodecV1(buildData.revisionTagCodec, buildData.idCompressor),
 		},
-		[FluidClientVersion.v2_52]: {
+		{
+			minVersionForCollab: FluidClientVersion.v2_52,
 			formatVersion: DetachedFieldIndexFormatVersion.v2,
 			codec: (buildData: BuildData) =>
 				makeDetachedNodeToFieldCodecV2(buildData.revisionTagCodec, buildData.idCompressor),
 		},
-	},
-);
+	],
+).retypeEncodedUnsafe<JsonCompatibleReadOnly>();
