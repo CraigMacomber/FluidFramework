@@ -34,7 +34,7 @@ import {
 	blobCountPropertyName,
 	totalBlobSizePropertyName,
 	type IRuntimeMessageCollection,
-	type IRuntimeMessagesContent,
+	type MessageBunchBatch,
 } from "@fluidframework/runtime-definitions/internal";
 import {
 	toDeltaManagerInternal,
@@ -412,6 +412,17 @@ export abstract class SharedObjectCore<
 	protected abstract processMessagesCore(messagesCollection: IRuntimeMessageCollection): void;
 
 	/**
+	 * Apply multiple 'bunches' of sequenced ops to this shared object.
+	 * @remarks
+	 * Override this to provide more optimized handling.
+	 */
+	protected processMessageBunchBatch(messagesCollection: MessageBunchBatch): void {
+		for (const messageCollection of messagesCollection) {
+			this.processMessagesCore(messageCollection);
+		}
+	}
+
+	/**
 	 * Called when the object has disconnected from the delta stream.
 	 */
 	protected abstract onDisconnect(): void;
@@ -538,7 +549,7 @@ export abstract class SharedObjectCore<
 		);
 		// attachDeltaHandler is only called after services is assigned
 		this.services.deltaConnection.attach({
-			processMessages: (messagesCollection: IRuntimeMessageCollection) => {
+			processMessages: (messagesCollection: MessageBunchBatch) => {
 				this.processMessages(messagesCollection);
 			},
 			setConnectionState: (connected: boolean) => {
@@ -599,51 +610,77 @@ export abstract class SharedObjectCore<
 	 *
 	 */
 	/* eslint-enable jsdoc/check-indentation */
-	private processMessages(messagesCollection: IRuntimeMessageCollection): void {
+	private processMessages(messagesCollectionBatchEncoded: MessageBunchBatch): void {
 		this.verifyNotClosed(); // This will result in container closure.
 
-		const { envelope, local, messagesContent } = messagesCollection;
+		assert(
+			messagesCollectionBatchEncoded.length > 0,
+			"Messages collection batch should not be empty",
+		);
 
 		// Decode any handles in the contents before processing the messages.
-		const decodedMessagesContent: IRuntimeMessagesContent[] = [];
-		for (const { contents, localOpMetadata, clientSequenceNumber } of messagesContent) {
-			const decodedMessageContent: IRuntimeMessagesContent = {
-				contents: parseHandles(contents, this.serializer),
-				localOpMetadata,
-				clientSequenceNumber,
-			};
-			decodedMessagesContent.push(decodedMessageContent);
-		}
+		const messagesCollectionBatch = messagesCollectionBatchEncoded.map(
+			(messagesCollection) => ({
+				...messagesCollection,
+				messagesContent: messagesCollection.messagesContent.map(
+					({ contents, localOpMetadata, clientSequenceNumber }) => ({
+						contents: parseHandles(contents, this.serializer),
+						localOpMetadata,
+						clientSequenceNumber,
+					}),
+				),
+			}),
+		);
 
 		const emitEvents = (event: "pre-op" | "op"): void => {
-			for (const { contents, clientSequenceNumber } of decodedMessagesContent) {
-				const message: ISequencedDocumentMessage = {
-					...envelope,
-					contents,
-					clientSequenceNumber,
-				};
-				this.emitInternal(event, message, local);
+			for (const messagesCollection of messagesCollectionBatch) {
+				const { envelope, local, messagesContent } = messagesCollection;
+				for (const { contents, clientSequenceNumber } of messagesContent) {
+					const message: ISequencedDocumentMessage = {
+						...envelope,
+						contents,
+						clientSequenceNumber,
+					};
+					this.emitInternal(event, message, local);
+				}
 			}
 		};
 
+		// TODO: is pulling this out of the loop below ok?
 		emitEvents("pre-op");
+		// TODO: is using the first one ok?
+		const forMeasure = messagesCollectionBatch[0];
+		// TODO: is pulling this out of the loop below ok?
 		this.opProcessingHelper.measure(
 			(): ICustomData<ProcessTelemetryProperties> => {
-				const decodedMessagesCollection: IRuntimeMessageCollection = {
-					envelope,
-					local,
-					messagesContent: decodedMessagesContent,
-				};
-				this.processMessagesCore(decodedMessagesCollection);
+				this.processMessageBunchBatch(messagesCollectionBatch);
+
 				const telemetryProperties: ProcessTelemetryProperties = {
-					sequenceDifference: envelope.sequenceNumber - envelope.referenceSequenceNumber,
+					sequenceDifference:
+						forMeasure.envelope.sequenceNumber - forMeasure.envelope.referenceSequenceNumber,
 				};
 				return {
 					customData: telemetryProperties,
 				};
 			},
-			local ? "local" : "remote",
+			forMeasure.local ? "local" : "remote",
 		);
+
+		for (const messagesCollection of messagesCollectionBatch) {
+			const { envelope, local } = messagesCollection;
+			this.opProcessingHelper.measure(
+				(): ICustomData<ProcessTelemetryProperties> => {
+					this.processMessagesCore(messagesCollection);
+					const telemetryProperties: ProcessTelemetryProperties = {
+						sequenceDifference: envelope.sequenceNumber - envelope.referenceSequenceNumber,
+					};
+					return {
+						customData: telemetryProperties,
+					};
+				},
+				local ? "local" : "remote",
+			);
+		}
 		emitEvents("op");
 	}
 
