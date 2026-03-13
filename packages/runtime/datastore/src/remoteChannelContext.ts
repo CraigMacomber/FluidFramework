@@ -109,9 +109,11 @@ export class RemoteChannelContext implements IChannelContext {
 				this.pendingMessagesState !== undefined,
 				0xa6c /* pending messages state is undefined */,
 			);
-			this.services.deltaConnection.processMessages(
-				this.pendingMessagesState.messageCollections,
-			);
+			if (this.pendingMessagesState.messageCollections.length > 0) {
+				this.services.deltaConnection.processMessages(
+					this.pendingMessagesState.messageCollections,
+				);
+			}
 			this.thresholdOpsCounter.send(
 				"ProcessPendingOps",
 				this.pendingMessagesState.pendingCount,

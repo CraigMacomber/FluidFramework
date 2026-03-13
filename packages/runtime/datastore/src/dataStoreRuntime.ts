@@ -838,12 +838,15 @@ export class FluidDataStoreRuntime
 
 		const flushCurrentChannel = (): void => {
 			if (currentAddress === undefined) {
+				assert(currentBatches.length === 0, "No current address but have pending batches");
 				return;
 			}
 			const channelContext = this.contexts.get(currentAddress);
 			assert(!!channelContext, 0xa6b /* Channel context not found */);
-			channelContext.processMessages(currentBatches);
-			currentBatches = [];
+			if (currentBatches.length > 0) {
+				channelContext.processMessages(currentBatches);
+				currentBatches = [];
+			}
 			currentAddress = undefined;
 		};
 
