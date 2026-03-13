@@ -142,6 +142,35 @@ export interface IRuntimeMessageCollection {
 }
 
 /**
+ * An {@link IRuntimeMessageCollection} that also requires that all contained messages:
+ * - Are contiguous in sequencing order.
+ * - Are all from the same client.
+ * - Are all based on the same reference sequence number.
+ * - Are not interleaved with messages from other clients.
+ * - Were actually grouped together into a "grouped batch" by the client when they were submitted:
+ * even ops meeting the other requirements arn't considered a grouped batch if they were not send and processed as one.
+ * @legacy @beta
+ * @sealed
+ */
+export interface MessageGroupedBatch extends IRuntimeMessageCollection {}
+
+/**
+ * A {@link MessageGroupedBatch} that also requires that all contained messages:
+ * - Are a contiguous subsequence of messages from the same grouped batch (in order and cannot skip any messages).
+ * - Are all for the same DDS in the container.
+ * @legacy @beta
+ * @sealed
+ */
+export interface MessageBunch extends MessageGroupedBatch {}
+
+/**
+ * A contiguous sequence of {@link MessageBunch}.
+ * @legacy @beta
+ * @sealed
+ */
+export type MessageBunchBatch = readonly MessageBunch[];
+
+/**
  * Outgoing {@link IFluidDataStoreChannel} message structures.
  * @internal
  *

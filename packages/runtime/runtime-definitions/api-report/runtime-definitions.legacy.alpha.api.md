@@ -397,6 +397,17 @@ export interface LocalAttributionKey {
     type: "local";
 }
 
+// @beta @sealed @legacy
+export interface MessageBunch extends MessageGroupedBatch {
+}
+
+// @beta @sealed @legacy
+export type MessageBunchBatch = readonly MessageBunch[];
+
+// @beta @sealed @legacy
+export interface MessageGroupedBatch extends IRuntimeMessageCollection {
+}
+
 // @beta @input
 export type MinimumVersionForCollab = `${1 | 2}.${bigint}.${bigint}` | `${1 | 2}.${bigint}.${bigint}-${string}`;
 

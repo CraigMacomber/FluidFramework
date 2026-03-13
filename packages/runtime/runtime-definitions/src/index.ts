@@ -64,6 +64,9 @@ export type {
 	IRuntimeMessagesContent,
 	ISequencedMessageEnvelope,
 	IRuntimeStorageService,
+	MessageGroupedBatch,
+	MessageBunch,
+	MessageBunchBatch,
 } from "./protocol.js";
 export {
 	encodeHandlesInContainerRuntime,
