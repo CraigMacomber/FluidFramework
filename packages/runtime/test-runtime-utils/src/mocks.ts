@@ -60,9 +60,9 @@ import {
 	IFluidDataStoreChannel,
 	VisibilityState,
 	type ITelemetryContext,
-	type IRuntimeMessageCollection,
 	type IRuntimeMessagesContent,
 	type MinimumVersionForCollab,
+	type MessageBunchBatch,
 } from "@fluidframework/runtime-definitions/internal";
 import {
 	getNormalizedObjectStoragePathParts,
@@ -112,7 +112,7 @@ export class MockDeltaConnection implements IDeltaConnection {
 		this.handler?.setConnectionState(connected);
 	}
 
-	public processMessages(messageCollection: IRuntimeMessageCollection): void {
+	public processMessages(messageCollection: MessageBunchBatch): void {
 		this.handler?.processMessages?.(messageCollection);
 	}
 
@@ -499,7 +499,7 @@ export class MockContainerRuntime extends TypedEventEmitter<IContainerRuntimeEve
 					localOpMetadata,
 				},
 			];
-			this.dataStoreRuntime.processMessages({ envelope: message, local, messagesContent });
+			this.dataStoreRuntime.processMessages([{ envelope: message, local, messagesContent }]);
 		}
 	}
 
@@ -1075,7 +1075,7 @@ export class MockFluidDataStoreRuntime
 
 	public submitSignal: IFluidDataStoreRuntime["submitSignal"] = () => null;
 
-	public processMessages(messageCollection: IRuntimeMessageCollection): void {
+	public processMessages(messageCollection: MessageBunchBatch): void {
 		if (this.disposed) {
 			return;
 		}

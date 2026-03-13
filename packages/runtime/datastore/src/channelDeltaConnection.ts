@@ -9,8 +9,8 @@ import type {
 	IDeltaHandler,
 } from "@fluidframework/datastore-definitions/internal";
 import type {
-	IRuntimeMessageCollection,
 	IRuntimeMessagesContent,
+	MessageBunchBatch,
 } from "@fluidframework/runtime-definitions/internal";
 import { DataProcessingError } from "@fluidframework/telemetry-utils/internal";
 
@@ -98,21 +98,19 @@ export class ChannelDeltaConnection implements IDeltaConnection {
 		this.handler.setConnectionState(connected);
 	}
 
-	public processMessages(messageCollection: IRuntimeMessageCollection): void {
+	public processMessages(messageBunchBatch: MessageBunchBatch): void {
 		// catches as data processing error whether or not they come from async pending queues
 		try {
-			const newMessagesContent = getContentsWithStashedOpHandling(
-				messageCollection.messagesContent,
-			);
-			this.handler.processMessages({
+			const newBatch = messageBunchBatch.map((messageCollection) => ({
 				...messageCollection,
-				messagesContent: newMessagesContent,
-			});
+				messagesContent: getContentsWithStashedOpHandling(messageCollection.messagesContent),
+			}));
+			this.handler.processMessages(newBatch);
 		} catch (error) {
 			throw DataProcessingError.wrapIfUnrecognized(
 				error,
 				"channelDeltaConnectionFailedToProcessMessages",
-				messageCollection.envelope,
+				messageBunchBatch[0]?.envelope,
 			);
 		}
 	}

@@ -182,7 +182,7 @@ export class MockContainerRuntimeWithOpBunching extends MockContainerRuntimeForR
 				local: previousLocal,
 				messagesContent: bunchedMessagesContent,
 			};
-			this.dataStoreRuntime.processMessages(messageCollection);
+			this.dataStoreRuntime.processMessages([messageCollection]);
 			bunchedMessagesContent = [];
 		};
 

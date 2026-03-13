@@ -8,9 +8,9 @@ import type { ISnapshotTree } from "@fluidframework/driver-definitions/internal"
 import type {
 	IExperimentalIncrementalSummaryContext,
 	IGarbageCollectionData,
-	IRuntimeMessageCollection,
 	ISummaryTreeWithStats,
 	ITelemetryContext,
+	MessageBunchBatch,
 } from "@fluidframework/runtime-definitions/internal";
 
 import type { IFluidDataStoreRuntime } from "./dataStoreRuntime.js";
@@ -142,7 +142,7 @@ export interface IDeltaHandler {
 	 * Process messages for this channel. The messages here are contiguous messages for this channel in a batch.
 	 * @param messageCollection - The collection of messages to process.
 	 */
-	processMessages: (messageCollection: IRuntimeMessageCollection) => void;
+	processMessages: (messageCollection: MessageBunchBatch) => void;
 
 	/**
 	 * State change events to indicate changes to the delta connection

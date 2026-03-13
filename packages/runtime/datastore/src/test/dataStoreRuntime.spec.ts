@@ -252,13 +252,15 @@ describe("FluidDataStoreRuntime.isDirty tracking", () => {
 	}: {
 		local: boolean;
 		messageCount: number;
-	}): IRuntimeMessageCollection => ({
-		envelope: {
-			type: "other", // allows us to test top-level logic of runtime.processMessages without actually providing a legit message
-		} satisfies Partial<ISequencedMessageEnvelope> as ISequencedMessageEnvelope,
-		local,
-		messagesContent: Array.from({ length: messageCount }, () => content),
-	});
+	}): IRuntimeMessageCollection[] => [
+		{
+			envelope: {
+				type: "other", // allows us to test top-level logic of runtime.processMessages without actually providing a legit message
+			} satisfies Partial<ISequencedMessageEnvelope> as ISequencedMessageEnvelope,
+			local,
+			messagesContent: Array.from({ length: messageCount }, () => content),
+		},
+	];
 
 	it("Submitting and processing local/non-local ops correctly updates isDirty", () => {
 		const runtime = createRuntime("runtime1");

@@ -63,7 +63,7 @@ import type {
 	SummarizeInternalFn,
 	IInboundSignalMessage,
 	IPendingMessagesState,
-	IRuntimeMessageCollection,
+	MessageBunchBatch,
 	IFluidDataStoreFactory,
 	PackagePath,
 	IRuntimeStorageService,
@@ -756,33 +756,40 @@ export abstract class FluidDataStoreContext
 	 * Process messages for this data store. The messages here are contiguous messages for this data store in a batch.
 	 * @param messageCollection - The collection of messages to process.
 	 */
-	public processMessages(messageCollection: IRuntimeMessageCollection): void {
-		const { envelope, messagesContent, local } = messageCollection;
-		const safeTelemetryProps = extractSafePropertiesFromMessage(envelope);
-		// Tombstone error is logged in garbage collector. So, set "checkTombstone" to false when calling
-		// "verifyNotClosed" which logs tombstone errors.
-		this.verifyNotClosed("process", false /* checkTombstone */, safeTelemetryProps);
-
-		this.summarizerNode.recordChange(envelope as ISequencedDocumentMessage);
-
+	public processMessages(messageBunchBatch: MessageBunchBatch): void {
 		if (this.loaded) {
 			assert(this.channel !== undefined, 0xa68 /* Channel is not loaded */);
-			this.channel.processMessages(messageCollection);
+			for (const messageCollection of messageBunchBatch) {
+				const safeTelemetryProps = extractSafePropertiesFromMessage(
+					messageCollection.envelope,
+				);
+				this.verifyNotClosed("process", false /* checkTombstone */, safeTelemetryProps);
+				this.summarizerNode.recordChange(
+					messageCollection.envelope as ISequencedDocumentMessage,
+				);
+			}
+			this.channel.processMessages(messageBunchBatch);
 		} else {
-			assert(!local, 0x142 /* "local store channel is not loaded" */);
 			assert(
 				this.pendingMessagesState !== undefined,
 				0xa69 /* pending messages queue is undefined */,
 			);
-			this.pendingMessagesState.messageCollections.push({
-				...messageCollection,
-				messagesContent: [...messagesContent],
-			});
-			this.pendingMessagesState.pendingCount += messagesContent.length;
-			this.thresholdOpsCounter.sendIfMultiple(
-				"StorePendingOps",
-				this.pendingMessagesState.pendingCount,
-			);
+			for (const messageCollection of messageBunchBatch) {
+				const { envelope, messagesContent, local } = messageCollection;
+				const safeTelemetryProps = extractSafePropertiesFromMessage(envelope);
+				this.verifyNotClosed("process", false /* checkTombstone */, safeTelemetryProps);
+				this.summarizerNode.recordChange(envelope as ISequencedDocumentMessage);
+				assert(!local, 0x142 /* "local store channel is not loaded" */);
+				this.pendingMessagesState.messageCollections.push({
+					...messageCollection,
+					messagesContent: [...messagesContent],
+				});
+				this.pendingMessagesState.pendingCount += messagesContent.length;
+				this.thresholdOpsCounter.sendIfMultiple(
+					"StorePendingOps",
+					this.pendingMessagesState.pendingCount,
+				);
+			}
 		}
 	}
 
@@ -990,7 +997,7 @@ export abstract class FluidDataStoreContext
 		for (const messageCollection of this.pendingMessagesState.messageCollections) {
 			// Only process ops whose seq number is greater than snapshot sequence number from which it loaded.
 			if (messageCollection.envelope.sequenceNumber > baseSequenceNumber) {
-				channel.processMessages(messageCollection);
+				channel.processMessages([messageCollection]);
 			}
 		}
 

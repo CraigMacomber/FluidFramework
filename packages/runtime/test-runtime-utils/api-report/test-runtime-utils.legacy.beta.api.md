@@ -188,7 +188,7 @@ export class MockDeltaConnection implements IDeltaConnection {
     // (undocumented)
     handler: IDeltaHandler | undefined;
     // (undocumented)
-    processMessages(messageCollection: IRuntimeMessageCollection): void;
+    processMessages(messageCollection: MessageBunchBatch): void;
     // (undocumented)
     reSubmit(content: any, localOpMetadata: unknown, squash: boolean): void;
     // (undocumented)
@@ -477,7 +477,7 @@ export class MockFluidDataStoreRuntime extends EventEmitter implements IFluidDat
     // (undocumented)
     readonly path = "";
     // (undocumented)
-    processMessages(messageCollection: IRuntimeMessageCollection): void;
+    processMessages(messageCollection: MessageBunchBatch): void;
     // (undocumented)
     processSignal(message: any, local: boolean): void;
     // (undocumented)

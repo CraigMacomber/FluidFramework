@@ -20,8 +20,8 @@ import type {
 	ISummarizeResult,
 	ISummarizerNodeWithGC,
 	IPendingMessagesState,
-	IRuntimeMessageCollection,
 	IRuntimeStorageService,
+	MessageBunchBatch,
 } from "@fluidframework/runtime-definitions/internal";
 import {
 	type ITelemetryLoggerExt,
@@ -109,9 +109,9 @@ export class RemoteChannelContext implements IChannelContext {
 				this.pendingMessagesState !== undefined,
 				0xa6c /* pending messages state is undefined */,
 			);
-			for (const messageCollection of this.pendingMessagesState.messageCollections) {
-				this.services.deltaConnection.processMessages(messageCollection);
-			}
+			this.services.deltaConnection.processMessages(
+				this.pendingMessagesState.messageCollections,
+			);
 			this.thresholdOpsCounter.send(
 				"ProcessPendingOps",
 				this.pendingMessagesState.pendingCount,
@@ -171,29 +171,35 @@ export class RemoteChannelContext implements IChannelContext {
 
 	/**
 	 * Process messages for this channel context. The messages here are contiguous messages for this context in a batch.
-	 * @param messageCollection - The collection of messages to process.
+	 * @param messageBunchBatch - The batch of message bunches to process.
 	 */
-	public processMessages(messageCollection: IRuntimeMessageCollection): void {
-		const { envelope, messagesContent, local } = messageCollection;
-		this.summarizerNode.invalidate(envelope.sequenceNumber);
+	public processMessages(messageBunchBatch: MessageBunchBatch): void {
+		for (const { envelope } of messageBunchBatch) {
+			this.summarizerNode.invalidate(envelope.sequenceNumber);
+		}
 
 		if (this.isLoaded) {
-			this.services.deltaConnection.processMessages(messageCollection);
+			this.services.deltaConnection.processMessages(messageBunchBatch);
 		} else {
-			assert(!local, 0x195 /* "Remote channel must not be local when processing op" */);
 			assert(
 				this.pendingMessagesState !== undefined,
 				0xa6d /* pending messages queue is undefined */,
 			);
-			this.pendingMessagesState.messageCollections.push({
-				...messageCollection,
-				messagesContent: [...messagesContent],
-			});
-			this.pendingMessagesState.pendingCount += messagesContent.length;
-			this.thresholdOpsCounter.sendIfMultiple(
-				"StorePendingOps",
-				this.pendingMessagesState.pendingCount,
-			);
+			for (const messageCollection of messageBunchBatch) {
+				assert(
+					!messageCollection.local,
+					0x195 /* "Remote channel must not be local when processing op" */,
+				);
+				this.pendingMessagesState.messageCollections.push({
+					...messageCollection,
+					messagesContent: [...messageCollection.messagesContent],
+				});
+				this.pendingMessagesState.pendingCount += messageCollection.messagesContent.length;
+				this.thresholdOpsCounter.sendIfMultiple(
+					"StorePendingOps",
+					this.pendingMessagesState.pendingCount,
+				);
+			}
 		}
 	}
 

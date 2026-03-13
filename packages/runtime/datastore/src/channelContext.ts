@@ -18,8 +18,8 @@ import type {
 	IGarbageCollectionData,
 	IFluidDataStoreContext,
 	ISummarizeResult,
-	IRuntimeMessageCollection,
 	IRuntimeStorageService,
+	MessageBunchBatch,
 } from "@fluidframework/runtime-definitions/internal";
 import { addBlobToSummary } from "@fluidframework/runtime-utils/internal";
 import {
@@ -43,7 +43,7 @@ export interface IChannelContext {
 	 * Process messages for this channel context. The messages here are contiguous messages for this context in a batch.
 	 * @param messageCollection - The collection of messages to process.
 	 */
-	processMessages(messageCollection: IRuntimeMessageCollection): void;
+	processMessages(messageBunchBatch: MessageBunchBatch): void;
 
 	summarize(
 		fullTree?: boolean,

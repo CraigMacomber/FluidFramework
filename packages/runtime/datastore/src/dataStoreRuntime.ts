@@ -60,6 +60,7 @@ import {
 	type IInboundSignalMessage,
 	type IRuntimeMessageCollection,
 	type IRuntimeMessagesContent,
+	type MessageBunchBatch,
 	notifiesReadOnlyState,
 	encodeHandlesInContainerRuntime,
 	type IFluidDataStorePolicies,
@@ -824,6 +825,8 @@ export class FluidDataStoreRuntime
 	private processChannelMessages(messageCollection: IRuntimeMessageCollection): void {
 		this.verifyNotClosed();
 
+		// TODO: more message grouping.
+
 		/*
 		 * Bunch contiguous messages for the same channel and send them together.
 		 * This is an optimization where DDSes can process a bunch of ops together. DDSes
@@ -843,11 +846,13 @@ export class FluidDataStoreRuntime
 			const channelContext = this.contexts.get(currentAddress);
 			assert(!!channelContext, 0xa6b /* Channel context not found */);
 
-			channelContext.processMessages({
-				envelope,
-				messagesContent: currentMessagesContent,
-				local,
-			});
+			channelContext.processMessages([
+				{
+					envelope,
+					messagesContent: currentMessagesContent,
+					local,
+				},
+			]);
 
 			currentMessagesContent = [];
 		};
@@ -913,37 +918,39 @@ export class FluidDataStoreRuntime
 	 * Process messages for this data store. The messages here are contiguous messages in a batch.
 	 * @param messageCollection - The collection of messages to process.
 	 */
-	public processMessages(messageCollection: IRuntimeMessageCollection): void {
+	public processMessages(messageBunchBatch: MessageBunchBatch): void {
 		this.verifyNotClosed();
 
-		const { envelope, local, messagesContent } = messageCollection;
+		for (const messageCollection of messageBunchBatch) {
+			const { envelope, local, messagesContent } = messageCollection;
 
-		if (local) {
-			this.pendingOpCount.value -= messagesContent.length;
-		}
-
-		try {
-			switch (envelope.type) {
-				case DataStoreMessageType.ChannelOp: {
-					this.processChannelMessages(messageCollection);
-					break;
-				}
-				case DataStoreMessageType.Attach: {
-					this.processAttachMessages(messageCollection);
-					break;
-				}
-				default:
+			if (local) {
+				this.pendingOpCount.value -= messagesContent.length;
 			}
-		} catch (error) {
-			throw DataProcessingError.wrapIfUnrecognized(
-				error,
-				"fluidDataStoreRuntimeFailedToProcessMessage",
-				envelope,
-			);
-		}
 
-		for (const { contents, clientSequenceNumber } of messagesContent) {
-			this.emit("op", { ...envelope, contents, clientSequenceNumber });
+			try {
+				switch (envelope.type) {
+					case DataStoreMessageType.ChannelOp: {
+						this.processChannelMessages(messageCollection);
+						break;
+					}
+					case DataStoreMessageType.Attach: {
+						this.processAttachMessages(messageCollection);
+						break;
+					}
+					default:
+				}
+			} catch (error) {
+				throw DataProcessingError.wrapIfUnrecognized(
+					error,
+					"fluidDataStoreRuntimeFailedToProcessMessage",
+					envelope,
+				);
+			}
+
+			for (const { contents, clientSequenceNumber } of messagesContent) {
+				this.emit("op", { ...envelope, contents, clientSequenceNumber });
+			}
 		}
 	}
 

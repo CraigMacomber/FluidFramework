@@ -16,8 +16,8 @@ import type {
 	IGarbageCollectionData,
 	ISummarizeResult,
 	IPendingMessagesState,
-	IRuntimeMessageCollection,
 	IRuntimeStorageService,
+	MessageBunchBatch,
 } from "@fluidframework/runtime-definitions/internal";
 import {
 	type ITelemetryLoggerExt,
@@ -81,9 +81,9 @@ export abstract class LocalChannelContextBase implements IChannelContext {
 
 	/**
 	 * Process messages for this channel context. The messages here are contiguous messages for this context in a batch.
-	 * @param messageCollection - The collection of messages to process.
+	 * @param messageBunchBatch - The batch of message bunches to process.
 	 */
-	processMessages(messageCollection: IRuntimeMessageCollection): void {
+	processMessages(messageBunchBatch: MessageBunchBatch): void {
 		assert(
 			this.globallyVisible,
 			0x2d3 /* "Local channel must be globally visible when processing op" */,
@@ -93,17 +93,18 @@ export abstract class LocalChannelContextBase implements IChannelContext {
 		// delay loading. So after the container is attached and some other client joins which start generating
 		// ops for this channel. So not loaded local channel can still receive ops and we store them to process later.
 		if (this.isLoaded) {
-			this.services.value.deltaConnection.processMessages(messageCollection);
+			this.services.value.deltaConnection.processMessages(messageBunchBatch);
 		} else {
-			assert(
-				!messageCollection.local,
-				0x189 /* "Should always be remote because a local dds shouldn't generate ops before loading" */,
-			);
-			const propsCopy = {
-				...messageCollection,
-				messagesContent: [...messageCollection.messagesContent],
-			};
-			this.pendingMessagesState.messageCollections.push(propsCopy);
+			for (const messageCollection of messageBunchBatch) {
+				assert(
+					!messageCollection.local,
+					0x189 /* "Should always be remote because a local dds shouldn't generate ops before loading" */,
+				);
+				this.pendingMessagesState.messageCollections.push({
+					...messageCollection,
+					messagesContent: [...messageCollection.messagesContent],
+				});
+			}
 		}
 	}
 
@@ -263,9 +264,9 @@ export class RehydratedLocalChannelContext extends LocalChannelContextBase {
 						this.id,
 					);
 					// Send all pending messages to the channel
-					for (const messageCollection of this.pendingMessagesState.messageCollections) {
-						this.services.value.deltaConnection.processMessages(messageCollection);
-					}
+					this.services.value.deltaConnection.processMessages(
+						this.pendingMessagesState.messageCollections,
+					);
 					return channel;
 				} catch (error) {
 					throw DataProcessingError.wrapIfUnrecognized(

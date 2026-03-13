@@ -44,6 +44,7 @@ import type {
 	InboundAttachMessage,
 	IRuntimeMessageCollection,
 	IRuntimeMessagesContent,
+	MessageBunchBatch,
 	ISummarizeResult,
 	ISummaryTreeWithStats,
 	ITelemetryContext,
@@ -928,22 +929,24 @@ export class ChannelCollection
 	 * Process messages for this channel collection. The messages here are contiguous messages in a batch.
 	 * @param messageCollection - The collection of messages to process.
 	 */
-	public processMessages(messageCollection: IRuntimeMessageCollection): void {
-		switch (messageCollection.envelope.type) {
-			case ContainerMessageType.FluidDataStoreOp: {
-				this.processChannelMessages(messageCollection);
-				break;
-			}
-			case ContainerMessageType.Attach: {
-				this.processAttachMessages(messageCollection);
-				break;
-			}
-			case ContainerMessageType.Alias: {
-				this.processAliasMessages(messageCollection);
-				break;
-			}
-			default: {
-				assert(false, 0x8e9 /* unreached */);
+	public processMessages(messageBunchBatch: MessageBunchBatch): void {
+		for (const messageCollection of messageBunchBatch) {
+			switch (messageCollection.envelope.type) {
+				case ContainerMessageType.FluidDataStoreOp: {
+					this.processChannelMessages(messageCollection);
+					break;
+				}
+				case ContainerMessageType.Attach: {
+					this.processAttachMessages(messageCollection);
+					break;
+				}
+				case ContainerMessageType.Alias: {
+					this.processAliasMessages(messageCollection);
+					break;
+				}
+				default: {
+					assert(false, 0x8e9 /* unreached */);
+				}
 			}
 		}
 	}
@@ -967,11 +970,11 @@ export class ChannelCollection
 			const currentContext = this.contexts.get(currentMessageState.address);
 			assert(!!currentContext, 0xa66 /* Context not found */);
 
-			currentContext.processMessages({
+			currentContext.processMessages([{
 				envelope: { ...envelope, type: currentMessageState.type },
 				messagesContent: currentMessagesContent,
 				local,
-			});
+			}]);
 			currentMessagesContent = [];
 		};
 

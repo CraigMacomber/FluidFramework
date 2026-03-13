@@ -3352,7 +3352,9 @@ export class ContainerRuntime
 				// Remove the metadata from the message before sending it to the channel collection. The metadata
 				// is added by the container runtime and is not part of the message that the channel collection and
 				// layers below it expect.
-				this.channelCollection.processMessages({ envelope: message, messagesContent, local });
+				this.channelCollection.processMessages([
+					{ envelope: message, messagesContent, local },
+				]);
 				break;
 			}
 			case ContainerMessageType.BlobAttach: {

@@ -140,7 +140,7 @@ export interface IFluidDataStoreChannel extends IDisposable {
     makeVisibleAndAttachGraph(): void;
     notifyReadOnlyState?(readonly: boolean): void;
     readonly policies?: IFluidDataStorePolicies;
-    processMessages(messageCollection: IRuntimeMessageCollection): void;
+    processMessages(messageCollection: MessageBunchBatch): void;
     processSignal(message: IInboundSignalMessage, local: boolean): void;
     // (undocumented)
     request(request: IRequest): Promise<IResponse>;

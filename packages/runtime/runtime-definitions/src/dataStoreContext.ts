@@ -42,6 +42,7 @@ import type {
 	IInboundSignalMessage,
 	IRuntimeMessageCollection,
 	IRuntimeStorageService,
+	MessageBunchBatch,
 } from "./protocol.js";
 import type {
 	CreateChildSummarizerNodeParam,
@@ -348,7 +349,7 @@ export interface IFluidDataStoreChannel extends IDisposable {
 	 * Process messages for this channel. The messages here are contiguous messages in a batch.
 	 * @param messageCollection - The collection of messages to process.
 	 */
-	processMessages(messageCollection: IRuntimeMessageCollection): void;
+	processMessages(messageCollection: MessageBunchBatch): void;
 
 	/**
 	 * Processes the signal.

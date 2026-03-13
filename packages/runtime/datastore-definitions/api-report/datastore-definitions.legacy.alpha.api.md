@@ -59,7 +59,7 @@ export interface IDeltaConnection {
 // @beta @legacy
 export interface IDeltaHandler {
     applyStashedOp(message: any): void;
-    processMessages: (messageCollection: IRuntimeMessageCollection) => void;
+    processMessages: (messageCollection: MessageBunchBatch) => void;
     reSubmit(message: any, localOpMetadata: unknown, squash?: boolean): void;
     rollback?(message: any, localOpMetadata: unknown): void;
     setConnectionState(connected: boolean): void;
