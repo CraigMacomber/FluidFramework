@@ -820,60 +820,62 @@ export class FluidDataStoreRuntime
 	/**
 	 * Process channel messages. The messages here are contiguous channel types messages in a batch for this data
 	 * store.
-	 * @param messageCollection - The collection of messages to process.
+	 * @param messageBunchBatch - The batch of message bunches to process.
 	 */
-	private processChannelMessages(messageCollection: IRuntimeMessageCollection): void {
+	private processChannelMessages(messageBunchBatch: MessageBunchBatch): void {
 		this.verifyNotClosed();
 
-		// TODO: more message grouping.
-
 		/*
-		 * Bunch contiguous messages for the same channel and send them together.
+		 * Bunch contiguous messages for the same channel across all input bunches and send them together.
 		 * This is an optimization where DDSes can process a bunch of ops together. DDSes
 		 * like merge tree or shared tree can process ops more efficiently when they are bunched together.
 		 */
+		// Buffer sub-bunches for the current address. Flushed whenever the address changes,
+		// preserving the original interleaved processing order between channels.
 		let currentAddress: string | undefined;
+		let currentBatches: IRuntimeMessageCollection[] = [];
 		let currentMessagesContent: IRuntimeMessagesContent[] = [];
-		const { messagesContent, local, envelope } = messageCollection;
 
-		const sendBunchedMessages = (): void => {
-			// Current address will be undefined for the first message in the list.
+		const flushCurrentChannel = (): void => {
 			if (currentAddress === undefined) {
 				return;
 			}
-
-			// process the last set of channel ops
 			const channelContext = this.contexts.get(currentAddress);
 			assert(!!channelContext, 0xa6b /* Channel context not found */);
-
-			channelContext.processMessages([
-				{
-					envelope,
-					messagesContent: currentMessagesContent,
-					local,
-				},
-			]);
-
-			currentMessagesContent = [];
+			channelContext.processMessages(currentBatches);
+			currentBatches = [];
+			currentAddress = undefined;
 		};
 
-		for (const { contents, ...restOfMessagesContent } of messagesContent) {
-			const contentsEnvelope = contents as IEnvelope;
+		for (const { messagesContent, local, envelope } of messageBunchBatch) {
+			for (const { contents, ...restOfMessagesContent } of messagesContent) {
+				const contentsEnvelope = contents as IEnvelope;
 
-			// If the address of the message changes while processing the batch, send the current bunch.
-			if (currentAddress !== contentsEnvelope.address) {
-				sendBunchedMessages();
+				if (currentAddress !== contentsEnvelope.address) {
+					// Save any pending messages for the current address as a sub-bunch, then flush.
+					if (currentMessagesContent.length > 0) {
+						currentBatches.push({ envelope, messagesContent: currentMessagesContent, local });
+						currentMessagesContent = [];
+					}
+					flushCurrentChannel();
+					currentAddress = contentsEnvelope.address;
+				}
+
+				currentMessagesContent.push({
+					contents: contentsEnvelope.contents,
+					...restOfMessagesContent,
+				});
 			}
 
-			currentMessagesContent.push({
-				contents: contentsEnvelope.contents,
-				...restOfMessagesContent,
-			});
-			currentAddress = contentsEnvelope.address;
+			// End of bunch: save any pending messages as a sub-bunch. Don't flush yet —
+			// the next bunch may continue targeting the same address.
+			if (currentMessagesContent.length > 0) {
+				currentBatches.push({ envelope, messagesContent: currentMessagesContent, local });
+				currentMessagesContent = [];
+			}
 		}
 
-		// Process the last bunch of messages.
-		sendBunchedMessages();
+		flushCurrentChannel();
 	}
 
 	private processAttachMessages(messageCollection: IRuntimeMessageCollection): void {
@@ -921,6 +923,15 @@ export class FluidDataStoreRuntime
 	public processMessages(messageBunchBatch: MessageBunchBatch): void {
 		this.verifyNotClosed();
 
+		const channelOpAccumulator: IRuntimeMessageCollection[] = [];
+
+		const flushChannelOpBatch = (): void => {
+			if (channelOpAccumulator.length > 0) {
+				this.processChannelMessages(channelOpAccumulator);
+				channelOpAccumulator.length = 0;
+			}
+		};
+
 		for (const messageCollection of messageBunchBatch) {
 			const { envelope, local, messagesContent } = messageCollection;
 
@@ -931,10 +942,13 @@ export class FluidDataStoreRuntime
 			try {
 				switch (envelope.type) {
 					case DataStoreMessageType.ChannelOp: {
-						this.processChannelMessages(messageCollection);
+						channelOpAccumulator.push(messageCollection);
 						break;
 					}
 					case DataStoreMessageType.Attach: {
+						// Flush pending channel ops before processing attach messages, since
+						// attach messages may create new channels that subsequent channel ops target.
+						flushChannelOpBatch();
 						this.processAttachMessages(messageCollection);
 						break;
 					}
@@ -952,6 +966,8 @@ export class FluidDataStoreRuntime
 				this.emit("op", { ...envelope, contents, clientSequenceNumber });
 			}
 		}
+
+		flushChannelOpBatch();
 	}
 
 	public processSignal(message: IInboundSignalMessage, local: boolean): void {
