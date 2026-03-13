@@ -665,22 +665,6 @@ export abstract class SharedObjectCore<
 			},
 			forMeasure.local ? "local" : "remote",
 		);
-
-		for (const messagesCollection of messagesCollectionBatch) {
-			const { envelope, local } = messagesCollection;
-			this.opProcessingHelper.measure(
-				(): ICustomData<ProcessTelemetryProperties> => {
-					this.processMessagesCore(messagesCollection);
-					const telemetryProperties: ProcessTelemetryProperties = {
-						sequenceDifference: envelope.sequenceNumber - envelope.referenceSequenceNumber,
-					};
-					return {
-						customData: telemetryProperties,
-					};
-				},
-				local ? "local" : "remote",
-			);
-		}
 		emitEvents("op");
 	}
 
