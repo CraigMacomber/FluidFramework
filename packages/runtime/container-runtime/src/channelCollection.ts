@@ -930,17 +930,28 @@ export class ChannelCollection
 	 * @param messageCollection - The collection of messages to process.
 	 */
 	public processMessages(messageBunchBatch: MessageBunchBatch): void {
+		const fluidDataStoreOpBunches: IRuntimeMessageCollection[] = [];
+
+		const flushDataStoreOpBunches = (): void => {
+			if (fluidDataStoreOpBunches.length > 0) {
+				this.processChannelMessages(fluidDataStoreOpBunches);
+				fluidDataStoreOpBunches.length = 0;
+			}
+		};
+
 		for (const messageCollection of messageBunchBatch) {
 			switch (messageCollection.envelope.type) {
 				case ContainerMessageType.FluidDataStoreOp: {
-					this.processChannelMessages(messageCollection);
+					fluidDataStoreOpBunches.push(messageCollection);
 					break;
 				}
 				case ContainerMessageType.Attach: {
+					flushDataStoreOpBunches();
 					this.processAttachMessages(messageCollection);
 					break;
 				}
 				case ContainerMessageType.Alias: {
+					flushDataStoreOpBunches();
 					this.processAliasMessages(messageCollection);
 					break;
 				}
@@ -949,33 +960,30 @@ export class ChannelCollection
 				}
 			}
 		}
+
+		flushDataStoreOpBunches();
 	}
 
 	/**
-	 * Process channel messages. The messages here are contiguous channel type messages in a batch. Bunch
-	 * of contiguous messages for a data store should be sent to it together.
-	 * @param messageCollection - The collection of messages to process.
+	 * Process channel messages. The messages here are consecutive FluidDataStoreOp bunches in a batch.
+	 * Contiguous messages for the same (address, type) are sent together as a MessageBunchBatch,
+	 * preserving the original processing order between data stores.
+	 * @param messageBunches - The consecutive FluidDataStoreOp collections to process.
 	 */
-	private processChannelMessages(messageCollection: IRuntimeMessageCollection): void {
-		const { envelope, messagesContent, local } = messageCollection;
+	private processChannelMessages(messageBunches: IRuntimeMessageCollection[]): void {
 		let currentMessageState: { address: string; type: string } | undefined;
+		let currentBatches: IRuntimeMessageCollection[] = [];
 		let currentMessagesContent: IRuntimeMessagesContent[] = [];
 
-		// Helper that sends the current bunch of messages to the data store. It validates that the data stores exists.
-		const sendBunchedMessages = (): void => {
-			// Current message state will be undefined for the first message in the list.
+		const flushCurrentStore = (): void => {
 			if (currentMessageState === undefined) {
 				return;
 			}
 			const currentContext = this.contexts.get(currentMessageState.address);
 			assert(!!currentContext, 0xa66 /* Context not found */);
-
-			currentContext.processMessages([{
-				envelope: { ...envelope, type: currentMessageState.type },
-				messagesContent: currentMessagesContent,
-				local,
-			}]);
-			currentMessagesContent = [];
+			currentContext.processMessages(currentBatches);
+			currentBatches = [];
+			currentMessageState = undefined;
 		};
 
 		/**
@@ -983,65 +991,86 @@ export class ChannelCollection
 		 * This is an optimization mainly for DDSes, where it can process a bunch of ops together. DDSes
 		 * like merge tree or shared tree can process ops more efficiently when they are bunched together.
 		 */
-		for (const { contents, ...restOfMessagesContent } of messagesContent) {
-			const contentsEnvelope = contents as IEnvelope<FluidDataStoreMessage>;
-			const address = contentsEnvelope.address;
-			const context = this.contexts.get(address);
+		for (const { envelope, messagesContent, local } of messageBunches) {
+			for (const { contents, ...restOfMessagesContent } of messagesContent) {
+				const contentsEnvelope = contents as IEnvelope<FluidDataStoreMessage>;
+				const address = contentsEnvelope.address;
+				const context = this.contexts.get(address);
 
-			// If the data store has been deleted, log an error and ignore this message. This helps prevent document
-			// corruption in case a deleted data store accidentally submitted an op.
-			if (this.checkAndLogIfDeleted(address, context, "Changed", "processFluidDataStoreOp")) {
-				continue;
-			}
+				// If the data store has been deleted, log an error and ignore this message. This helps prevent document
+				// corruption in case a deleted data store accidentally submitted an op.
+				if (this.checkAndLogIfDeleted(address, context, "Changed", "processFluidDataStoreOp")) {
+					continue;
+				}
 
-			if (context === undefined) {
-				// Former assert 0x162
-				throw DataProcessingError.create(
-					"No context for op",
-					"processFluidDataStoreOp",
-					envelope as ISequencedDocumentMessage,
-					{
-						local,
-						messageDetails: JSON.stringify({
-							type: envelope.type,
-							contentType: typeof contents,
-						}),
-						...tagCodeArtifacts({ address }),
-					},
+				if (context === undefined) {
+					// Former assert 0x162
+					throw DataProcessingError.create(
+						"No context for op",
+						"processFluidDataStoreOp",
+						envelope as ISequencedDocumentMessage,
+						{
+							local,
+							messageDetails: JSON.stringify({
+								type: envelope.type,
+								contentType: typeof contents,
+							}),
+							...tagCodeArtifacts({ address }),
+						},
+					);
+				}
+
+				const { type: contextType, content: contextContents } = contentsEnvelope.contents;
+				// If the address or type of the message changes, save the current messages as a sub-bunch then flush.
+				if (
+					currentMessageState?.address !== address ||
+					currentMessageState?.type !== contextType
+				) {
+					if (currentMessagesContent.length > 0 && currentMessageState !== undefined) {
+						currentBatches.push({
+							envelope: { ...envelope, type: currentMessageState.type },
+							messagesContent: currentMessagesContent,
+							local,
+						});
+						currentMessagesContent = [];
+					}
+					flushCurrentStore();
+					currentMessageState = { address, type: contextType };
+				}
+
+				currentMessagesContent.push({
+					contents: contextContents,
+					...restOfMessagesContent,
+				});
+
+				// Notify that a GC node for the data store changed. This is used to detect if a deleted data store is
+				// being used.
+				this.gcNodeUpdated({
+					node: { type: "DataStore", path: `/${address}` },
+					reason: "Changed",
+					timestampMs: envelope.timestamp,
+					packagePath: context.isLoaded ? context.packagePath : undefined,
+				});
+
+				detectOutboundReferences(address, contextContents, (fromPath: string, toPath: string) =>
+					this.parentContext.addedGCOutboundRoute(fromPath, toPath, envelope.timestamp),
 				);
 			}
 
-			const { type: contextType, content: contextContents } = contentsEnvelope.contents;
-			// If the address or type of the message changes while processing the message, send the current bunch.
-			if (
-				currentMessageState?.address !== address ||
-				currentMessageState?.type !== contextType
-			) {
-				sendBunchedMessages();
+			// End of bunch: save any remaining messages as a sub-bunch. Don't flush yet —
+			// the next bunch may continue targeting the same (address, type).
+			// Note that there may not be any messages in case all of them were ignored because the data store is deleted.
+			if (currentMessagesContent.length > 0 && currentMessageState !== undefined) {
+				currentBatches.push({
+					envelope: { ...envelope, type: currentMessageState.type },
+					messagesContent: currentMessagesContent,
+					local,
+				});
+				currentMessagesContent = [];
 			}
-			currentMessagesContent.push({
-				contents: contextContents,
-				...restOfMessagesContent,
-			});
-			currentMessageState = { address, type: contextType };
-
-			// Notify that a GC node for the data store changed. This is used to detect if a deleted data store is
-			// being used.
-			this.gcNodeUpdated({
-				node: { type: "DataStore", path: `/${address}` },
-				reason: "Changed",
-				timestampMs: envelope.timestamp,
-				packagePath: context.isLoaded ? context.packagePath : undefined,
-			});
-
-			detectOutboundReferences(address, contextContents, (fromPath: string, toPath: string) =>
-				this.parentContext.addedGCOutboundRoute(fromPath, toPath, envelope.timestamp),
-			);
 		}
 
-		// Process the last bunch of messages, if any. Note that there may not be any messages in case all of them are
-		// ignored because the data store is deleted.
-		sendBunchedMessages();
+		flushCurrentStore();
 	}
 
 	private async getDataStore(
