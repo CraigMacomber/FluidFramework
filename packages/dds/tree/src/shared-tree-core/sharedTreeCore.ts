@@ -14,9 +14,9 @@ import type {
 } from "@fluidframework/id-compressor";
 import type {
 	IExperimentalIncrementalSummaryContext,
-	IRuntimeMessageCollection,
 	ISummaryTreeWithStats,
 	ITelemetryContext,
+	MessageBunchBatch,
 } from "@fluidframework/runtime-definitions/internal";
 import { SummaryTreeBuilder } from "@fluidframework/runtime-utils/internal";
 import type {
@@ -415,75 +415,85 @@ export class SharedTreeCore<TEditor extends ChangeFamilyEditor, TChange>
 	/**
 	 * Process a bunch of messages from the runtime. SharedObject will call this method with a bunch of messages.
 	 */
-	public processMessagesCore(messagesCollection: IRuntimeMessageCollection): void {
-		const { envelope, local, messagesContent } = messagesCollection;
-		const commits: GraphCommit<TChange>[] = [];
-		let messagesSessionId: SessionId | undefined;
-		let branchId: BranchId | undefined;
+	public processMessageBunchBatch(messagesCollections: MessageBunchBatch): void {
+		let lastMinimumSequenceNumber: SeqNumber | undefined;
 
-		const processBunch = (branch: BranchId): void => {
-			assert(messagesSessionId !== undefined, 0xada /* Messages must have a session ID */);
-			this.processCommits(
-				messagesSessionId,
-				brand(envelope.sequenceNumber),
-				brand(envelope.referenceSequenceNumber),
-				local,
-				branch,
-				commits,
-			);
+		for (const messagesCollection of messagesCollections) {
+			const { envelope, local, messagesContent } = messagesCollection;
 
-			commits.length = 0;
-			branchId = undefined;
-		};
+			// Pending bunch to accumulate changes to submit to processCommits together.
+			let bunch:
+				| { commits: GraphCommit<TChange>[]; messagesSessionId: SessionId; branchId: BranchId }
+				| undefined;
+			const processBunch = (): void => {
+				if (bunch !== undefined) {
+					// TODO: buffer multiple bunches instead of flushing each one.
+					this.processCommits(
+						bunch.messagesSessionId,
+						brand(envelope.sequenceNumber),
+						brand(envelope.referenceSequenceNumber),
+						local,
+						bunch.branchId,
+						bunch.commits,
+					);
+				}
+				bunch = undefined;
+			};
 
-		// Get a list of all the commits from the messages.
-		for (const messageContent of messagesContent) {
-			// Empty context object is passed in, as our decode function is schema-agnostic.
-			const message = this.messageCodec.decode(messageContent.contents, {
-				idCompressor: this.idCompressor,
-			});
+			for (const messageContent of messagesContent) {
+				const message = this.messageCodec.decode(messageContent.contents, {
+					idCompressor: this.idCompressor,
+				});
 
-			if (messagesSessionId !== undefined) {
 				assert(
-					messagesSessionId === message.sessionId,
+					bunch === undefined || bunch.messagesSessionId === message.sessionId,
 					0xad9 /* All messages in a bunch must have the same session ID */,
 				);
-			}
-			messagesSessionId = message.sessionId;
 
-			const type = message.type;
-			switch (type) {
-				case "commit": {
-					if (branchId !== undefined && message.branchId !== branchId) {
-						processBunch(branchId);
-					}
+				const type = message.type;
+				switch (type) {
+					case "commit": {
+						if (message.branchId !== bunch?.branchId) {
+							processBunch();
+						}
+						bunch ??= {
+							commits: [],
+							messagesSessionId: message.sessionId,
+							branchId: message.branchId,
+						};
 
-					branchId = message.branchId;
-					commits.push(message.commit);
-					break;
-				}
-				case "branch": {
-					if (branchId !== undefined) {
-						processBunch(branchId);
+						bunch.commits.push(message.commit);
+						break;
 					}
-					this.editManager.sequenceBranchCreation(
-						messagesSessionId,
-						brand(envelope.referenceSequenceNumber),
-						message.branchId,
-					);
-					break;
-				}
-				default: {
-					unreachableCase(type);
+					case "branch": {
+						processBunch();
+						this.editManager.sequenceBranchCreation(
+							message.sessionId,
+							brand(envelope.referenceSequenceNumber),
+							message.branchId,
+						);
+						break;
+					}
+					default: {
+						unreachableCase(type);
+					}
 				}
 			}
+
+			processBunch();
+
+			// Do NOT advance minimumSequenceNumber here: deferred to after all bunches are processed.
+			lastMinimumSequenceNumber = brand(envelope.minimumSequenceNumber);
 		}
 
-		if (branchId !== undefined) {
-			processBunch(branchId);
-		}
-
-		this.editManager.advanceMinimumSequenceNumber(brand(envelope.minimumSequenceNumber));
+		// Advance minimumSequenceNumber only once using the last bunch's value.
+		// The base class asserts the batch is non-empty, so lastMinimumSequenceNumber is always set here.
+		// minimumSequenceNumber is monotonically non-decreasing, so the final value subsumes all earlier ones.
+		assert(
+			lastMinimumSequenceNumber !== undefined,
+			"Messages collection batch should not be empty",
+		);
+		this.editManager.advanceMinimumSequenceNumber(lastMinimumSequenceNumber);
 	}
 
 	private processCommits(

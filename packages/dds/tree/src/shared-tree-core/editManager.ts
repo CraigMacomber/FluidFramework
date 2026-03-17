@@ -528,17 +528,9 @@ export class EditManager<
 		return sharedBranch;
 	}
 
-	/* eslint-disable jsdoc/check-indentation */
 	/**
-	 * Add a bunch of sequenced changes. A bunch is a group of sequenced commits that have the following properties:
-	 * - They are not interleaved with messages from other DDSes in the container.
-	 * - They are all part of the same batch, which entails:
-	 *   - They are contiguous in sequencing order.
-	 *   - They are all from the same client.
-	 *   - They are all based on the same reference sequence number.
-	 *   - They are not interleaved with messages from other clients.
+	 * Add a {@link @fluidframework/runtime-definitions#MessageBunch | bunch} of sequenced changes.
 	 */
-	/* eslint-enable jsdoc/check-indentation */
 	public addSequencedChanges(
 		newCommits: readonly GraphCommit<TChangeset>[],
 		sessionId: SessionId,
@@ -721,7 +713,30 @@ class SharedBranch<TEditor extends ChangeFamilyEditor, TChangeset> {
 		});
 	}
 
+	// TODO: make this API accept multiple bunches.
 	public addSequencedChanges(
+		newCommits: readonly GraphCommit<TChangeset>[],
+		sessionId: SessionId,
+		sequenceNumber: SeqNumber,
+		areLocalCommits: boolean,
+		referenceSequenceNumber: SeqNumber,
+		onSequenceLocalCommit: OnSequenceCommit<TChangeset>,
+	): void {
+		this.addSequencedChangeBunch(
+			newCommits,
+			sessionId,
+			sequenceNumber,
+			areLocalCommits,
+			referenceSequenceNumber,
+			onSequenceLocalCommit,
+		);
+
+		// Step 3 - Rebase the local branch over the updated trunk.
+		// This makes the change visible on the view, and triggers the change events.
+		this.localBranch.rebaseOnto(this.trunk);
+	}
+
+	private addSequencedChangeBunch(
 		newCommits: readonly GraphCommit<TChangeset>[],
 		sessionId: SessionId,
 		sequenceNumber: SeqNumber,
@@ -754,47 +769,43 @@ class SharedBranch<TEditor extends ChangeFamilyEditor, TChangeset> {
 				this.sequenceLocalCommit(revision, nextSequenceId, sessionId, onSequenceLocalCommit);
 				nextSequenceId = getNextSequenceId(nextSequenceId);
 			}
-			return;
-		}
-
-		// Remote changes, i.e., changes from remote clients are applied in three steps.
-		// Step 1 - Recreate the peer remote client's local environment.
-		// Get the revision that the remote change is based on and rebase that peer local branch over the part of the
-		// trunk up to the base revision. This will be a no-op if the sending client has not advanced since the last
-		// time we received an edit from it
-		const peerLocalBranch = this.rebasePeer(sessionId, referenceSequenceNumber);
-
-		// Step 2 - Append the changes to the peer branch and rebase the changes to the tip of the trunk.
-		if (peerLocalBranch.getHead() === this.trunk.getHead()) {
-			// If the peer local branch is fully caught up and empty (no changes relative to the trunk) after being
-			// rebased, then push changes to the trunk directly and update the peer branch to the trunk's head.
-			for (const newCommit of newCommits) {
-				this.pushCommitToTrunk(nextSequenceId, { ...newCommit, sessionId });
-				nextSequenceId = getNextSequenceId(nextSequenceId);
-			}
-			peerLocalBranch.setHead(this.trunk.getHead());
 		} else {
-			// Otherwise, push the changes to the peer local branch and merge the branch into the trunk.
-			for (const newCommit of newCommits) {
-				peerLocalBranch.apply(tagChange(newCommit.change, newCommit.revision));
-			}
-			const result = this.trunk.merge(peerLocalBranch);
-			if (result !== undefined) {
-				// If the merge resulted in any changes to the trunk, update the sequence map and trunk metadata
-				// with the rebased commits.
-				for (const sourceCommit of result.sourceCommits) {
-					this.sequenceIdToCommit.set(nextSequenceId, sourceCommit);
-					this.commitMetadata.set(sourceCommit.revision, {
-						sequenceId: nextSequenceId,
-						sessionId,
-					});
+			// Remote changes, i.e., changes from remote clients are applied in three steps.
+			// Step 1 - Recreate the peer remote client's local environment.
+			// Get the revision that the remote change is based on and rebase that peer local branch over the part of the
+			// trunk up to the base revision. This will be a no-op if the sending client has not advanced since the last
+			// time we received an edit from it
+			const peerLocalBranch = this.rebasePeer(sessionId, referenceSequenceNumber);
+
+			// Step 2 - Append the changes to the peer branch and rebase the changes to the tip of the trunk.
+			if (peerLocalBranch.getHead() === this.trunk.getHead()) {
+				// If the peer local branch is fully caught up and empty (no changes relative to the trunk) after being
+				// rebased, then push changes to the trunk directly and update the peer branch to the trunk's head.
+				for (const newCommit of newCommits) {
+					this.pushCommitToTrunk(nextSequenceId, { ...newCommit, sessionId });
 					nextSequenceId = getNextSequenceId(nextSequenceId);
+				}
+				peerLocalBranch.setHead(this.trunk.getHead());
+			} else {
+				// Otherwise, push the changes to the peer local branch and merge the branch into the trunk.
+				for (const newCommit of newCommits) {
+					peerLocalBranch.apply(tagChange(newCommit.change, newCommit.revision));
+				}
+				const result = this.trunk.merge(peerLocalBranch);
+				if (result !== undefined) {
+					// If the merge resulted in any changes to the trunk, update the sequence map and trunk metadata
+					// with the rebased commits.
+					for (const sourceCommit of result.sourceCommits) {
+						this.sequenceIdToCommit.set(nextSequenceId, sourceCommit);
+						this.commitMetadata.set(sourceCommit.revision, {
+							sequenceId: nextSequenceId,
+							sessionId,
+						});
+						nextSequenceId = getNextSequenceId(nextSequenceId);
+					}
 				}
 			}
 		}
-
-		// Step 3 - Rebase the local branch over the updated trunk.
-		this.localBranch.rebaseOnto(this.trunk);
 	}
 
 	public isEmpty(baseCommit: GraphCommit<TChangeset>): boolean {

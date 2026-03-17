@@ -24,6 +24,7 @@ import type {
 	IExperimentalIncrementalSummaryContext,
 	ITelemetryContext,
 	IRuntimeMessageCollection,
+	MessageBunchBatch,
 } from "@fluidframework/runtime-definitions/internal";
 import {
 	SharedObject,
@@ -313,7 +314,11 @@ export class TestSharedTreeCore extends SharedObject {
 	}
 
 	protected override processMessagesCore(messagesCollection: IRuntimeMessageCollection): void {
-		this.kernel.processMessagesCore(messagesCollection);
+		this.kernel.processMessageBunchBatch([messagesCollection]);
+	}
+
+	protected override processMessageBunchBatch(messagesCollections: MessageBunchBatch): void {
+		this.kernel.processMessageBunchBatch(messagesCollections);
 	}
 	protected onDisconnect(): void {}
 

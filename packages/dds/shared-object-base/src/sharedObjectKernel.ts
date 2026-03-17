@@ -21,6 +21,7 @@ import type {
 	ITelemetryContext,
 	IExperimentalIncrementalSummaryContext,
 	IRuntimeMessageCollection,
+	MessageBunchBatch,
 	MinimumVersionForCollab,
 } from "@fluidframework/runtime-definitions/internal";
 import type { ITelemetryLoggerExt } from "@fluidframework/telemetry-utils/internal";
@@ -83,9 +84,9 @@ export interface SharedKernel {
 	applyStashedOp(content: unknown): void;
 
 	/**
-	 * {@inheritDoc SharedObjectCore.processMessagesCore}
+	 * {@inheritDoc SharedObjectCore.processMessageBunchBatch}
 	 */
-	processMessagesCore(messagesCollection: IRuntimeMessageCollection): void;
+	processMessageBunchBatch(messagesCollection: MessageBunchBatch): void;
 
 	/**
 	 * {@inheritDoc SharedObjectCore.rollback}
@@ -204,7 +205,11 @@ class SharedObjectFromKernel<
 	}
 
 	protected override processMessagesCore(messagesCollection: IRuntimeMessageCollection): void {
-		this.#kernel.processMessagesCore(messagesCollection);
+		this.#kernel.processMessageBunchBatch([messagesCollection]);
+	}
+
+	protected override processMessageBunchBatch(messagesCollections: MessageBunchBatch): void {
+		this.#kernel.processMessageBunchBatch(messagesCollections);
 	}
 
 	protected override rollback(content: unknown, localOpMetadata: unknown): void {
