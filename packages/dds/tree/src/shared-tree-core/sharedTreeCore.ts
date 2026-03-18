@@ -50,7 +50,11 @@ import type { BranchId, SharedTreeBranch } from "./branch.js";
 import { BranchCommitEnricher } from "./branchCommitEnricher.js";
 import type { ChangeEnricher } from "./changeEnricher.js";
 import { DefaultResubmitMachine } from "./defaultResubmitMachine.js";
-import { EditManager, minimumPossibleSequenceNumber } from "./editManager.js";
+import {
+	EditManager,
+	minimumPossibleSequenceNumber,
+	type SequencedBunch,
+} from "./editManager.js";
 import { makeEditManagerCodec, type EditManagerCodecOptions } from "./editManagerCodecs.js";
 import type { EditManagerFormatVersion, SeqNumber } from "./editManagerFormatCommons.js";
 import { EditManagerSummarizer } from "./editManagerSummarizer.js";
@@ -362,13 +366,15 @@ export class SharedTreeCore<TEditor extends ChangeFamilyEditor, TChange>
 		if (this.detachedRevision !== undefined) {
 			const newRevision: SeqNumber = brand((this.detachedRevision as number) + 1);
 			this.detachedRevision = newRevision;
-			this.editManager.addSequencedChanges(
-				[commit],
-				this.editManager.localSessionId,
-				newRevision,
-				this.detachedRevision,
-				branchId,
-			);
+			this.editManager.addSequencedChanges([
+				{
+					newCommits: [commit],
+					sessionId: this.editManager.localSessionId,
+					sequenceNumber: newRevision,
+					referenceSequenceNumber: this.detachedRevision,
+					branchId,
+				},
+			]);
 			this.editManager.advanceMinimumSequenceNumber(newRevision, false);
 			return undefined;
 		}
@@ -418,24 +424,33 @@ export class SharedTreeCore<TEditor extends ChangeFamilyEditor, TChange>
 	public processMessageBunchBatch(messagesCollections: MessageBunchBatch): void {
 		let lastMinimumSequenceNumber: SeqNumber | undefined;
 
+		// Buffer to accumulate bunches across collections until a "branch" message forces a flush.
+		const pendingBunches: (SequencedBunch<TChange> & { isLocal: boolean })[] = [];
+
+		const flushPendingBunches = (): void => {
+			if (pendingBunches.length > 0) {
+				this.processCommits(pendingBunches);
+				pendingBunches.length = 0;
+			}
+		};
+
 		for (const messagesCollection of messagesCollections) {
 			const { envelope, local, messagesContent } = messagesCollection;
 
-			// Pending bunch to accumulate changes to submit to processCommits together.
+			// Pending bunch to accumulate changes within a batch.
 			let bunch:
 				| { commits: GraphCommit<TChange>[]; messagesSessionId: SessionId; branchId: BranchId }
 				| undefined;
 			const processBunch = (): void => {
 				if (bunch !== undefined) {
-					// TODO: buffer multiple bunches instead of flushing each one.
-					this.processCommits(
-						bunch.messagesSessionId,
-						brand(envelope.sequenceNumber),
-						brand(envelope.referenceSequenceNumber),
-						local,
-						bunch.branchId,
-						bunch.commits,
-					);
+					pendingBunches.push({
+						newCommits: bunch.commits,
+						sessionId: bunch.messagesSessionId,
+						sequenceNumber: brand(envelope.sequenceNumber),
+						referenceSequenceNumber: brand(envelope.referenceSequenceNumber),
+						branchId: bunch.branchId,
+						isLocal: local,
+					});
 				}
 				bunch = undefined;
 			};
@@ -467,6 +482,8 @@ export class SharedTreeCore<TEditor extends ChangeFamilyEditor, TChange>
 					}
 					case "branch": {
 						processBunch();
+						// A "branch" message is a barrier: flush all buffered bunches before sequencing the branch creation.
+						flushPendingBunches();
 						this.editManager.sequenceBranchCreation(
 							message.sessionId,
 							brand(envelope.referenceSequenceNumber),
@@ -486,6 +503,8 @@ export class SharedTreeCore<TEditor extends ChangeFamilyEditor, TChange>
 			lastMinimumSequenceNumber = brand(envelope.minimumSequenceNumber);
 		}
 
+		flushPendingBunches();
+
 		// Advance minimumSequenceNumber only once using the last bunch's value.
 		// The base class asserts the batch is non-empty, so lastMinimumSequenceNumber is always set here.
 		// minimumSequenceNumber is monotonically non-decreasing, so the final value subsumes all earlier ones.
@@ -497,24 +516,18 @@ export class SharedTreeCore<TEditor extends ChangeFamilyEditor, TChange>
 	}
 
 	private processCommits(
-		sessionId: SessionId,
-		sequenceNumber: SeqNumber,
-		referenceSequenceNumber: SeqNumber,
-		isLocal: boolean,
-		branchId: BranchId,
-		commits: readonly GraphCommit<TChange>[],
+		bunches: readonly (SequencedBunch<TChange> & { isLocal: boolean })[],
 	): void {
-		this.editManager.addSequencedChanges(
-			commits,
-			sessionId,
-			sequenceNumber,
-			referenceSequenceNumber,
-			branchId,
-		);
+		this.editManager.addSequencedChanges(bunches);
 
 		// Update the resubmit machine for each commit applied.
-		for (const commit of commits) {
-			this.tryGetResubmitMachine(branchId)?.onSequencedCommitApplied(commit.revision, isLocal);
+		for (const bunch of bunches) {
+			for (const commit of bunch.newCommits) {
+				this.tryGetResubmitMachine(bunch.branchId)?.onSequencedCommitApplied(
+					commit.revision,
+					bunch.isLocal,
+				);
+			}
 		}
 	}
 

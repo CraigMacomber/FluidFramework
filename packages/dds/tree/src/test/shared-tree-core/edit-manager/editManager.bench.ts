@@ -302,13 +302,15 @@ describe("EditManager - Bench", () => {
 							const before = state.timer.now();
 							for (let iChange = 0; iChange < count; iChange++) {
 								const commit = sequencedEdits[iChange];
-								manager.addSequencedChanges(
-									[commit],
-									commit.sessionId,
-									brand(iChange + 1),
-									brand(0),
-									"main",
-								);
+								manager.addSequencedChanges([
+									{
+										newCommits: [commit],
+										sessionId: commit.sessionId,
+										sequenceNumber: brand(iChange + 1),
+										referenceSequenceNumber: brand(0),
+										branchId: "main",
+									},
+								]);
 							}
 							const after = state.timer.now();
 							duration = state.timer.toSeconds(before, after);

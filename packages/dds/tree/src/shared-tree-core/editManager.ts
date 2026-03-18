@@ -48,6 +48,28 @@ import {
 } from "./sequenceIdUtils.js";
 
 export const minimumPossibleSequenceNumber: SeqNumber = brand(Number.MIN_SAFE_INTEGER);
+
+/**
+ * A bunch of sequenced commits belonging to the same session and branch, ready to be applied.
+ */
+export interface SequencedBunch<TChangeset> {
+	readonly newCommits: readonly GraphCommit<TChangeset>[];
+	readonly sessionId: SessionId;
+	readonly sequenceNumber: SeqNumber;
+	readonly referenceSequenceNumber: SeqNumber;
+	readonly branchId: BranchId;
+}
+
+/**
+ * A {@link SequencedBunch} with `areLocalCommits` pre-computed, for use within a {@link SharedBranch}.
+ */
+interface BranchBunch<TChangeset> {
+	readonly newCommits: readonly GraphCommit<TChangeset>[];
+	readonly sessionId: SessionId;
+	readonly sequenceNumber: SeqNumber;
+	readonly areLocalCommits: boolean;
+	readonly referenceSequenceNumber: SeqNumber;
+}
 const minimumPossibleSequenceId: SequenceId = {
 	sequenceNumber: minimumPossibleSequenceNumber,
 };
@@ -529,22 +551,16 @@ export class EditManager<
 	}
 
 	/**
-	 * Add a {@link @fluidframework/runtime-definitions#MessageBunch | bunch} of sequenced changes.
+	 * Add a batch of {@link @fluidframework/runtime-definitions#MessageBunch | bunches} of sequenced changes.
 	 */
-	public addSequencedChanges(
-		newCommits: readonly GraphCommit<TChangeset>[],
-		sessionId: SessionId,
-		sequenceNumber: SeqNumber,
-		referenceSequenceNumber: SeqNumber,
-		branchId: BranchId,
-	): void {
-		assert(newCommits.length > 0, 0xad8 /* Expected at least one sequenced change */);
-		assert(
-			sequenceNumber > this.minimumSequenceNumber,
-			0x713 /* Expected change sequence number to exceed the last known minimum sequence number */,
-		);
-
-		const branch = this.getSharedBranch(branchId);
+	public addSequencedChanges(bunches: readonly SequencedBunch<TChangeset>[]): void {
+		assert(bunches.length > 0, 0xad8 /* Expected at least one sequenced change */);
+		for (const bunch of bunches) {
+			assert(
+				bunch.sequenceNumber > this.minimumSequenceNumber,
+				0x713 /* Expected change sequence number to exceed the last known minimum sequence number */,
+			);
+		}
 
 		const onSequenceLocalCommit = (
 			commit: GraphCommit<TChangeset>,
@@ -580,15 +596,23 @@ export class EditManager<
 			}
 		};
 
-		const areLocalCommits = sessionId === this.localSessionId;
-		branch.addSequencedChanges(
-			newCommits,
-			sessionId,
-			sequenceNumber,
-			areLocalCommits,
-			referenceSequenceNumber,
-			onSequenceLocalCommit,
-		);
+		// Group bunches by branchId so each branch processes all its bunches together,
+		// deferring the local-branch rebase until all bunches for that branch are done.
+		const branchBunches = new Map<BranchId, BranchBunch<TChangeset>[]>();
+		for (const bunch of bunches) {
+			const branchBunch: BranchBunch<TChangeset> = {
+				newCommits: bunch.newCommits,
+				sessionId: bunch.sessionId,
+				sequenceNumber: bunch.sequenceNumber,
+				areLocalCommits: bunch.sessionId === this.localSessionId,
+				referenceSequenceNumber: bunch.referenceSequenceNumber,
+			};
+			getOrCreate(branchBunches, bunch.branchId, () => []).push(branchBunch);
+		}
+
+		for (const [branchId, bunchGroup] of branchBunches) {
+			this.getSharedBranch(branchId).addSequencedChanges(bunchGroup, onSequenceLocalCommit);
+		}
 	}
 
 	public findLocalCommit(
@@ -713,26 +737,23 @@ class SharedBranch<TEditor extends ChangeFamilyEditor, TChangeset> {
 		});
 	}
 
-	// TODO: make this API accept multiple bunches.
 	public addSequencedChanges(
-		newCommits: readonly GraphCommit<TChangeset>[],
-		sessionId: SessionId,
-		sequenceNumber: SeqNumber,
-		areLocalCommits: boolean,
-		referenceSequenceNumber: SeqNumber,
+		bunches: readonly BranchBunch<TChangeset>[],
 		onSequenceLocalCommit: OnSequenceCommit<TChangeset>,
 	): void {
-		this.addSequencedChangeBunch(
-			newCommits,
-			sessionId,
-			sequenceNumber,
-			areLocalCommits,
-			referenceSequenceNumber,
-			onSequenceLocalCommit,
-		);
+		for (const bunch of bunches) {
+			this.addSequencedChangeBunch(
+				bunch.newCommits,
+				bunch.sessionId,
+				bunch.sequenceNumber,
+				bunch.areLocalCommits,
+				bunch.referenceSequenceNumber,
+				onSequenceLocalCommit,
+			);
+		}
 
-		// Step 3 - Rebase the local branch over the updated trunk.
-		// This makes the change visible on the view, and triggers the change events.
+		// Step 3 - Rebase the local branch over the updated trunk once for the entire batch.
+		// This makes the changes visible on the view, and triggers the change events.
 		this.localBranch.rebaseOnto(this.trunk);
 	}
 

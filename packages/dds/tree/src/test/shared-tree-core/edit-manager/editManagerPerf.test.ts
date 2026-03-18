@@ -361,18 +361,20 @@ export function testPerf(): void {
 						rebaser.rebasedCount = 0;
 						rebaser.invertedCount = 0;
 						rebaser.composedCount = 0;
-						manager.addSequencedChanges(
-							[
-								{
-									change: TestChange.emptyChange,
-									revision: mintRevisionTag(),
-								},
-							],
-							"peer" as SessionId,
-							brand(T + P + 1),
-							brand(T),
-							"main",
-						);
+						manager.addSequencedChanges([
+							{
+								newCommits: [
+									{
+										change: TestChange.emptyChange,
+										revision: mintRevisionTag(),
+									},
+								],
+								sessionId: "peer" as SessionId,
+								sequenceNumber: brand(T + P + 1),
+								referenceSequenceNumber: brand(T),
+								branchId: "main",
+							},
+						]);
 						const actual = {
 							rebased: rebaser.rebasedCount,
 							inverted: rebaser.invertedCount,
@@ -439,18 +441,20 @@ export function testPerf(): void {
 						rebaser.rebasedCount = 0;
 						rebaser.invertedCount = 0;
 						rebaser.composedCount = 0;
-						manager.addSequencedChanges(
-							[
-								{
-									change: TestChange.emptyChange,
-									revision: mintRevisionTag(),
-								},
-							],
-							"peer" as SessionId,
-							brand(T + P + 2),
-							brand(T),
-							"main",
-						);
+						manager.addSequencedChanges([
+							{
+								newCommits: [
+									{
+										change: TestChange.emptyChange,
+										revision: mintRevisionTag(),
+									},
+								],
+								sessionId: "peer" as SessionId,
+								sequenceNumber: brand(T + P + 2),
+								referenceSequenceNumber: brand(T),
+								branchId: "main",
+							},
+						]);
 						const actual = {
 							rebased: rebaser.rebasedCount,
 							inverted: rebaser.invertedCount,

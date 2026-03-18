@@ -417,21 +417,25 @@ export function runUnitTestScenario(
 					);
 					trunk.push({ intention: commit.intention, seq: commit.seqNumber });
 				}
-				summarizer.addSequencedChanges(
-					commits,
-					commits[0].sessionId,
-					commits[0].seqNumber,
-					commits[0].refNumber,
-					"main",
-				);
+				summarizer.addSequencedChanges([
+					{
+						newCommits: commits,
+						sessionId: commits[0].sessionId,
+						sequenceNumber: commits[0].seqNumber,
+						referenceSequenceNumber: commits[0].refNumber,
+						branchId: "main",
+					},
+				]);
 				for (const j of joiners) {
-					j.addSequencedChanges(
-						commits,
-						commits[0].sessionId,
-						commits[0].seqNumber,
-						commits[0].refNumber,
-						"main",
-					);
+					j.addSequencedChanges([
+						{
+							newCommits: commits,
+							sessionId: commits[0].sessionId,
+							sequenceNumber: commits[0].seqNumber,
+							referenceSequenceNumber: commits[0].refNumber,
+							branchId: "main",
+						},
+					]);
 				}
 
 				if (bunchOfSteps[0].type === "Pull") {

@@ -10,10 +10,16 @@ import {
 	type ChangeFamilyEditor,
 	type ChangeRebaser,
 	type DeltaRoot,
+	type GraphCommit,
 	type RevisionTag,
 	emptyDelta,
 } from "../../../core/index.js";
-import { type Commit, EditManager } from "../../../shared-tree-core/index.js";
+import {
+	type BranchId,
+	type Commit,
+	EditManager,
+	type SeqNumber,
+} from "../../../shared-tree-core/index.js";
 import { type RecursiveReadonly, brand, makeArray } from "../../../util/index.js";
 import {
 	TestChange,
@@ -140,17 +146,27 @@ export function rebaseLocalEditsOverTrunkEdits<TChange>(
 	const run = () => {
 		// If bunchCommits is true, send all trunk edit commits to the EditManager together.
 		if (bunchCommits) {
-			manager.addSequencedChanges(trunkEdits, trunkSessionId, brand(1), brand(0), "main");
+			manager.addSequencedChanges([
+				{
+					newCommits: trunkEdits,
+					sessionId: trunkSessionId,
+					sequenceNumber: brand(1),
+					referenceSequenceNumber: brand(0),
+					branchId: "main",
+				},
+			]);
 		} else {
 			for (let iChange = 0; iChange < trunkEditCount; iChange++) {
 				const commit = trunkEdits[iChange];
-				manager.addSequencedChanges(
-					[commit],
-					commit.sessionId,
-					brand(iChange + 1),
-					brand(iChange),
-					"main",
-				);
+				manager.addSequencedChanges([
+					{
+						newCommits: [commit],
+						sessionId: commit.sessionId,
+						sequenceNumber: brand(iChange + 1),
+						referenceSequenceNumber: brand(iChange),
+						branchId: "main",
+					},
+				]);
 			}
 		}
 	};
@@ -226,18 +242,20 @@ export function rebasePeerEditsOverTrunkEdits<TChange>(
 	subscribeToLocalBranch(manager);
 	for (let iChange = 0; iChange < trunkEditCount; iChange++) {
 		const revision = mintRevisionTag();
-		manager.addSequencedChanges(
-			[
-				{
-					change: mintChange(revision),
-					revision,
-				},
-			],
-			"trunk" as SessionId,
-			brand(iChange + 1),
-			brand(iChange),
-			"main",
-		);
+		manager.addSequencedChanges([
+			{
+				newCommits: [
+					{
+						change: mintChange(revision),
+						revision,
+					},
+				],
+				sessionId: "trunk" as SessionId,
+				sequenceNumber: brand(iChange + 1),
+				referenceSequenceNumber: brand(iChange),
+				branchId: "main",
+			},
+		]);
 	}
 	const peerSessionId = "peer" as SessionId;
 	const peerEdits = makeArray(peerEditCount, () => {
@@ -251,23 +269,27 @@ export function rebasePeerEditsOverTrunkEdits<TChange>(
 	const run = () => {
 		// If bunchCommits is true, send all peer edit commits to the EditManager together.
 		if (bunchCommits) {
-			manager.addSequencedChanges(
-				peerEdits,
-				peerSessionId,
-				brand(trunkEditCount + 1),
-				brand(0),
-				"main",
-			);
+			manager.addSequencedChanges([
+				{
+					newCommits: peerEdits,
+					sessionId: peerSessionId,
+					sequenceNumber: brand(trunkEditCount + 1),
+					referenceSequenceNumber: brand(0),
+					branchId: "main",
+				},
+			]);
 		} else {
 			for (let iChange = 0; iChange < peerEditCount; iChange++) {
 				const commit = peerEdits[iChange];
-				manager.addSequencedChanges(
-					[commit],
-					commit.sessionId,
-					brand(iChange + trunkEditCount + 1),
-					brand(0),
-					"main",
-				);
+				manager.addSequencedChanges([
+					{
+						newCommits: [commit],
+						sessionId: commit.sessionId,
+						sequenceNumber: brand(iChange + trunkEditCount + 1),
+						referenceSequenceNumber: brand(0),
+						branchId: "main",
+					},
+				]);
 			}
 		}
 	};
@@ -341,18 +363,20 @@ export function rebaseAdvancingPeerEditsOverTrunkEdits<TChange>(
 	subscribeToLocalBranch(manager);
 	for (let iChange = 0; iChange < editCount; iChange++) {
 		const revision = mintRevisionTag();
-		manager.addSequencedChanges(
-			[
-				{
-					change: mintChange(revision),
-					revision,
-				},
-			],
-			"trunk" as SessionId,
-			brand(iChange + 1),
-			brand(iChange),
-			"main",
-		);
+		manager.addSequencedChanges([
+			{
+				newCommits: [
+					{
+						change: mintChange(revision),
+						revision,
+					},
+				],
+				sessionId: "trunk" as SessionId,
+				sequenceNumber: brand(iChange + 1),
+				referenceSequenceNumber: brand(iChange),
+				branchId: "main",
+			},
+		]);
 	}
 	const peerEdits = makeArray(editCount, () => {
 		const revision = mintRevisionTag();
@@ -365,13 +389,15 @@ export function rebaseAdvancingPeerEditsOverTrunkEdits<TChange>(
 	const run = () => {
 		for (let iChange = 0; iChange < editCount; iChange++) {
 			const commit = peerEdits[iChange];
-			manager.addSequencedChanges(
-				[commit],
-				commit.sessionId,
-				brand(iChange + editCount + 1),
-				brand(iChange),
-				"main",
-			);
+			manager.addSequencedChanges([
+				{
+					newCommits: [commit],
+					sessionId: commit.sessionId,
+					sequenceNumber: brand(iChange + editCount + 1),
+					referenceSequenceNumber: brand(iChange),
+					branchId: "main",
+				},
+			]);
 		}
 	};
 	return defer ? run : run();
@@ -454,13 +480,15 @@ export function rebaseConcurrentPeerEdits<TChange>(
 	const run = () => {
 		for (let iChange = 0; iChange < peerEdits.length; iChange++) {
 			const commit = peerEdits[iChange];
-			manager.addSequencedChanges(
-				[commit],
-				commit.sessionId,
-				brand(iChange + 1),
-				brand(0),
-				"main",
-			);
+			manager.addSequencedChanges([
+				{
+					newCommits: [commit],
+					sessionId: commit.sessionId,
+					sequenceNumber: brand(iChange + 1),
+					referenceSequenceNumber: brand(0),
+					branchId: "main",
+				},
+			]);
 		}
 	};
 	return defer ? run : run();
@@ -480,7 +508,11 @@ export function getAllChanges(manager: TestEditManager): RecursiveReadonly<TestC
 /** Adds a sequenced change to an `EditManager` and returns the delta that was caused by the change */
 export function addSequencedChanges(
 	editManager: TestEditManager,
-	...args: Parameters<(typeof editManager)["addSequencedChanges"]>
+	newCommits: readonly GraphCommit<TestChange>[],
+	sessionId: SessionId,
+	sequenceNumber: SeqNumber,
+	referenceSequenceNumber: SeqNumber,
+	branchId: BranchId,
 ): DeltaRoot {
 	let delta: DeltaRoot = emptyDelta;
 	const offChange = editManager
@@ -490,7 +522,9 @@ export function addSequencedChanges(
 				delta = asDelta(change.change.intentions);
 			}
 		});
-	editManager.addSequencedChanges(...args);
+	editManager.addSequencedChanges([
+		{ newCommits, sessionId, sequenceNumber, referenceSequenceNumber, branchId },
+	]);
 	offChange();
 	return delta;
 }

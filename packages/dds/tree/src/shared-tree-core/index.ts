@@ -59,6 +59,7 @@ export {
 	minimumPossibleSequenceNumber,
 	type SummaryData,
 	type SharedBranchSummaryData,
+	type SequencedBunch,
 } from "./editManager.js";
 export type {
 	Commit,
