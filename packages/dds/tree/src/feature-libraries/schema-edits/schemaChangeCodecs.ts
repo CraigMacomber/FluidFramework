@@ -31,11 +31,7 @@ import type { SchemaChange } from "./schemaChangeTypes.js";
 export function makeSchemaChangeCodecs(
 	options: CodecWriteOptions,
 ): ICodecFamily<SchemaChange> {
-	const schemaChangeCodecV1OrV2 = makeSchemaChangeCodecV1orV2(options);
-	return makeCodecFamily([
-		[SchemaChangeFormatVersion.v1, schemaChangeCodecV1OrV2],
-		[SchemaChangeFormatVersion.v2, schemaChangeCodecV1OrV2],
-	]);
+	return makeCodecFamily([[SchemaChangeFormatVersion.v1, makeSchemaChangeCodecV1(options)]]);
 }
 
 /**
@@ -46,10 +42,6 @@ export function makeSchemaChangeCodecs(
  */
 export const SchemaChangeFormatVersion = strictEnum("SchemaChangeFormatVersion", {
 	v1: 1,
-	/**
-	 * Same as V1: Added unnecessarily when {@link SchemaFormatVersion.v2} was added.
-	 */
-	v2: 2,
 });
 export type SchemaChangeFormatVersion = Values<typeof SchemaChangeFormatVersion>;
 
@@ -65,12 +57,10 @@ export function getCodecTreeForSchemaChangeFormat(
 }
 
 /**
- * Compose the change codec using mostly v1 logic.
+ * Create the schema change codec for version 1 of the schema change format.
  * @param options - The codec options.
- * @param schemaWriteVersion - The schema write version.
- * @returns The composed schema change codec.
  */
-function makeSchemaChangeCodecV1orV2(
+function makeSchemaChangeCodecV1(
 	options: CodecWriteOptions,
 ): IJsonCodec<SchemaChange, EncodedSchemaChange> {
 	const schemaCodec = schemaCodecBuilder.build(options);
