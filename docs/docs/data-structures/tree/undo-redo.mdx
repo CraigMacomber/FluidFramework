@@ -3,13 +3,14 @@ title: Undo Redo Support
 sidebar_position: 7
 ---
 
-`SharedTree` makes creating an undo and redo stack very simple. By listening for the `commitApplied` event on the `TreeView` object, you can get a `Revertible` object from a `Commit`.
-`Commit` objects come in three flavors:
+`SharedTree` makes undo/redo stacks straightforward. Listen for `commitApplied` on `TreeView` to receive a `Revertible` object from each `Commit`.
 
--   Default: a normal commit made in the local client that would go on the undo stack
--   Undo: a commit that is the result of reverting a Default or Redo `Revertible` object that would go on the redo stack
--   Redo: a commit that is the result of reverting an Undo `Revertible` object that would go on the undo stack
+Commits come in three kinds:
 
-To undo a change, call the `revert` method on the `Revertible` object. This will return the properties of the `TreeView` object last changed by the local client to the their previous state. If changes were made to those properties by other clients in the meantime these changes will be overwritten. For example, if the local client moves 3 items into an array, and then a remote client moves one of those items somewhere else, when the local client reverts their change, the item moved by the remote client will be returned to its original position.
+-   **Default**: a normal local commit — goes on the undo stack.
+-   **Undo**: produced by reverting a Default or Redo `Revertible` — goes on the redo stack.
+-   **Redo**: produced by reverting an Undo `Revertible` — goes on the undo stack.
 
-There is an example of a working undo/redo stack here: [Shared Tree Demo](https://github.com/microsoft/FluidExamples/tree/main/brainstorm/src/utils/undo.ts).
+To undo a change, call `revert()` on the `Revertible`. This restores the properties last changed by the local client to their previous state, overwriting any intervening changes from other clients. For example, if the local client moved 3 items into an array and a remote client then moved one of those items elsewhere, reverting the local change returns that item to its original position.
+
+See the [Shared Tree Demo](https://github.com/microsoft/FluidExamples/tree/main/brainstorm/src/utils/undo.ts) for a working example.

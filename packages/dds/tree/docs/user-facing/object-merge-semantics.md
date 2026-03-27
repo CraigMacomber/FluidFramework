@@ -1,77 +1,45 @@
 # Merge Semantics of Edits on Object Nodes
 
-This document describes the semantics of edits that can be performed on object nodes.
+Merge semantics for edits on object nodes, for `SharedTree` users and maintainers.
 
-Target audience: `SharedTree` users and maintainers.
+> We recommend reading [SharedTree's approach to merge semantics](merge-semantics) first.
 
-> While this document is self-contained, we recommend reading about [SharedTree's approach to merge semantics](merge-semantics) first.
-
-Each edit's merge semantics are defined in terms of the edit's preconditions and postconditions.
-A precondition defines a requirement that must be met for the edit to be valid.
-A postcondition defines a guarantee that is made about the effect of the edit.
-(Invalid edits are ignored along with all other edits in the same transaction, and postconditions do not hold).
+Each edit's merge semantics are defined by its preconditions (requirements for the edit to be valid) and postconditions (guarantees about its effect). Invalid edits — along with all other edits in the same transaction — are dropped.
 
 ## Operator `=`
 
-Assigning a value to the property on an object node updates the value associated with that property on the object.
-
-Examples:
+Assigns a value to an object property.
 
 ```typescript
 rectangle.topLeft = new Point({ x: 0, y: 0 });
-```
-
-```typescript
 babyShowerNote.author = "The Joneses";
+proposal.text = undefined; // clears an optional property
 ```
 
-Optional properties can be cleared by assigning `undefined` to them.
+**Preconditions:**
+* No concurrent schema change was sequenced before this edit.
+* The right-hand side value must have status `TreeStatus.New` or be a primitive. _(This precondition will be removed soon.)_
 
-```typescript
-proposal.text = undefined;
-```
+**Postconditions:**
+* The right-hand side value is now associated with the targeted property.
+* The value previously associated with the property (if any) is removed (`TreeStatus.Removed`).
 
-Preconditions:
-* There is no concurrent schema change edit that is sequenced before the property assignment edit.
-* The value on the right side of the `=` operator must have status `TreeStatus.New` or be a primitive.
-  (This precondition will be removed soon)
-
-Postconditions:
-* The value that was on the right hand side of the `=` operator is now associated with the targeted property.
-* The value (if any) that was associated with the object property immediately prior to the application of the edit is removed (its status becomes `TreeStatus.Removed`).
-
-Removed items are saved internally for a time in case they need to be restored as a result of an undo operation.
-Changes made to them will apply despite their removed status.
+Removed items are retained internally in case they need to be restored by an undo. Changes made to them while removed still apply and become visible if the removal is undone.
 
 ## Additional Notes
 
 ### Operations on Removed Objects
 
-All of the above operations are effective even when the targeted object has been moved or removed.
+All operations above are effective even when the targeted object has been moved or removed.
 
 ### Last-Write-Wins Semantics
 
-If multiple edits concurrently edit the same field,
-then the field's final value will will be that of the edit that is sequenced last.
-In other words, property assignment has last-write-wins semantics.
+When multiple edits concurrently assign to the same field, the one sequenced last wins — the final value is always the last-sequenced assignment.
 
-Note that this means one user may overwrite a value set by another user without realizing it.
-Consider the following scenario:
-Alice and Bob are editing a document that contains sticky notes whose background color can be changed.
-Alice changes the background color of one sticky note from yellow to red,
-while Bob concurrently changes the background color of one sticky note from yellow to blue.
-The sequencing is such that Bob's edit is sequenced after Alice's edit.
+This means one user can silently overwrite another's value. For example, Alice changes a note's color from yellow to red while Bob concurrently changes it from yellow to blue. If Bob's edit is sequenced after Alice's, the note ends up blue.
 
 ![Bob's edit overwrites Alice's edit](https://storage.fluidframework.com/static/images/blue-over-red.png)<br />
-_A: Bob receives Alice's edit.
-Since Bob's client has yet to receive his own edit back from the sequencing service,
-Bob's client can deduce that his edit is sequenced later and therefore wins out over Alice's.
-This means the color property can remain blue.<br />
-B: Alice receives Bob's edit.
-Even though the edit was originally created in a context where it changed the color from yellow to blue,
-the edit now changes the color red to blue._
+_A: Bob receives Alice's edit. Because his own edit hasn't come back from the sequencer yet, Bob knows his edit will be sequenced later and win, so the color stays blue.<br />
+B: Alice receives Bob's edit. Even though it was originally a yellow → blue change, it now overwrites red → blue._
 
-Such overwriting is rare in application where users are given visual cues as to what data other users may be concurrently inspecting/editing.
-It's possible to prevent such overwrites by using constraints (effectively changing the semantics to first-write-wins),
-but note that this causes the the later edit to be dropped,
-and the data associated with it to be lost.
+Such overwrites are rare when users have visual cues about concurrent activity. Constraints can enforce first-write-wins semantics, but note that the losing edit is dropped entirely and its data is lost.

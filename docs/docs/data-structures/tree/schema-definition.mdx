@@ -5,10 +5,8 @@ sidebar_position: 3
 
 import { PackageLink } from "@site/src/components/shortLinks";
 
-A schema is defined using a `SchemaFactory` object which is created by passing a unique string such as a UUID to the constructor.
-The `SchemaFactory` class defines five primitive data types; `boolean`, `string`, `number`, `null`, and `handle` for specifying leaf nodes.
-It also has three methods for specifying internal nodes; `object()`, `array()`, and `map()`.
-Use the members of the class to build a schema.
+A schema is defined using a `SchemaFactory` object, constructed with a unique string (such as a UUID).
+`SchemaFactory` provides five leaf types — `boolean`, `string`, `number`, `null`, and `handle` — and three methods for internal nodes: `object()`, `array()`, and `map()`.
 See [defining a schema](../../start/tree-start.mdx#defining-a-schema) for an example.
 
 :::note
@@ -17,12 +15,10 @@ Once you have documents using your schema, see [Schema Evolution](./schema-evolu
 
 ## Object Schema
 
-Use the `object()` method to create a schema for a note. Note the following about this code:
+Use `object()` to define a schema. The method returns a schema object that you extend to create a TypeScript class. In this example:
 
--   The `object()`, `array()`, and `map()` methods return an object that defines a schema. Notionally, you can think of this object as datatype. (In the next step, you covert it to an actual TypeScript type.)
--   The first parameter of `object()` is the name of the type.
--   The `id`, `text`, `author`, and `lastChanged` properties are leaf nodes.
--   The `votes` property is an array node, whose members are all strings. It is defined with an inline call of the `array()` method.
+-   `id`, `text`, `author`, and `lastChanged` are leaf node properties.
+-   `votes` is an inline array node whose items are strings.
 
 ```typescript
 const noteSchema = sf.object("Note", {
@@ -34,15 +30,15 @@ const noteSchema = sf.object("Note", {
 });
 ```
 
-Create a TypeScript datatype by extending the notional type object.
+Create a TypeScript class by extending the schema object:
 
 ```typescript
 class Note extends noteSchema {
-	/* members of the class defined here */
+	/* class members */
 }
 ```
 
-You can also make the call of the `object()` method inline as in the following:
+You can also inline the `object()` call (this style is used throughout the rest of this article):
 
 ```typescript
 class Note extends sf.object("Note", {
@@ -52,15 +48,12 @@ class Note extends sf.object("Note", {
 	lastChanged: sf.number,
 	votes: sf.array(sf.string),
 }) {
-	/* members of the class defined here */
+	/* class members */
 }
 ```
 
-For the remainder of this article, we use the inline style.
-
 You can add fields, properties, and methods like any TypeScript class.
-For example, the `Note` class can have the following `updateText` method.
-Since the method writes to shared properties, the changes are reflected on all clients.
+Methods that write to shared properties are reflected on all clients. For example:
 
 ```typescript
 public updateText(text: string) {
@@ -69,7 +62,7 @@ public updateText(text: string) {
 }
 ```
 
-You can also add members that affect only the current client; that is, they are not based on DDSes. For example, the sticky note application can be updated to let each user set their own color to any note without changing the color of the note on any other clients. To facilitate this feature, the following members could be added to the `Note` class. Since the `color` property is not a shared object, the changes made by `setColor` only affect the current client.
+You can also add members that are local to the current client (not backed by a DDS). For example, a `color` property lets each user set their own note color without affecting other clients:
 
 ```typescript
 private color: string = "yellow";
@@ -85,19 +78,19 @@ Do _not_ override the constructor of types that you derive from objects returned
 
 :::
 
-Create the schema for a group of notes. Note that the `array()` method is called inline, which means that the `Group.notes` property has the notional datatype of an array node. We'll change this to a genuine TypeScript type in the [Array schema](#array-schema) section.
+Create a schema for a group of notes. `Group.notes` is an inline array node — we'll give it a named type in the [Array schema](#array-schema) section.
 
 ```typescript
 class Group extends sf.object('Group', {
     id: sf.string,
     name: sf.string,
     notes: sf.array(Note),
-});
+}) {}
 ```
 
 ## Array Schema
 
-The app is going to need the type that is returned from `sf.array(Note)` in multiple places, including outside the context of `SchemaFactory`, so we create a TypeScript type for it as follows. Note that we include a method for adding a new note to the array of notes. The implementation is omitted, but it would wrap the constructor for the `Note` class and one or more methods in the [array node APIs](./reading-and-editing.mdx#array-node-apis).
+Since `sf.array(Note)` is needed in multiple places, give it a named type. Methods can be added to wrap [array node APIs](./reading-and-editing.mdx#array-node-apis):
 
 ```typescript
 class Notes extends sf.array("Notes", Note) {
@@ -107,19 +100,19 @@ class Notes extends sf.array("Notes", Note) {
 }
 ```
 
-Now revise the declaration of the `Group` class to use the new type.
+Update `Group` to use the named type:
 
 ```typescript
 class Group extends sf.object('Group', {
     id: sf.string,
     name: sf.string,
     notes: Notes,
-});
+}) {}
 ```
 
 ## Root Schema
 
-As you can see from the screenshot, the top level of the root of the app's data can have two kinds of children: notes in groups and notes that are outside of any group. So, the children are defined as `Items` which is an array with two types of items. This is done by passing an array of schema types to the `array()` method. Methods for adding a new group to the app and a new note that is outside of any group are included.
+The root of the app's data can hold two kinds of children: notes inside groups, and notes outside any group. These are defined as `Items`, an array that accepts both types. Pass an array of schema types to `array()` to allow multiple item types:
 
 ```typescript
 class Items extends sf.array("Items", [Group, Note]) {
@@ -133,7 +126,7 @@ class Items extends sf.array("Items", [Group, Note]) {
 }
 ```
 
-The root of the schema must itself have a type which is defined as follows:
+Define the root type:
 
 ```typescript
 class App extends sf.object("App", {
@@ -141,7 +134,7 @@ class App extends sf.object("App", {
 }) {}
 ```
 
-The final step is to create a configuration object that will be used when a `SharedTree` object is created or loaded. See [creating a tree](../../start/tree-start.mdx#creating-a-tree). The following is an example of doing this.
+Finally, create a configuration object used when creating or loading a `SharedTree`. See [creating a tree](../../start/tree-start.mdx#creating-a-tree):
 
 ```typescript
 export const appTreeConfiguration = new TreeViewConfiguration({
@@ -152,13 +145,13 @@ export const appTreeConfiguration = new TreeViewConfiguration({
 
 ## Map Schema
 
-The sticky notes example doesn't have any map nodes, but creating a map schema is like creating an array schema, except that you use the `map()` method. Consider a silent auction app. Users view various items up for auction and place bids for items they want. One way to represent the bids for an item is with a map from user names to bids. The following snippet shows how to create the schema. Note that `map()` doesn't need a parameter to specify the type of keys because it is always string.
+Creating a map schema is like creating an array schema, but using the `map()` method. Since map keys are always strings, no key type parameter is needed. For example, to represent bids in an auction app (mapping user names to bid amounts):
 
 ```typescript
 class AuctionItem extends sf.map('AuctionItem', sf.number) { ... }
 ```
 
-Like `array()`, `map()` can accept an array of types when the values of the map are not all the same type.
+Like `array()`, `map()` accepts an array of types when values are not all the same type:
 
 ```typescript
 class MyMapSchema extends sf.map('MyMap', [sf.number, sf.string]) { ... }
@@ -166,9 +159,7 @@ class MyMapSchema extends sf.map('MyMap', [sf.number, sf.string]) { ... }
 
 ## Recursive Schema
 
-Additionally, you can create recursive types (nodes that include nodes of the same type in their subtree hierarchy). Because of current limitation in TypeScript, doing this requires specific versions of the node types: `objectRecursive()`, `arrayRecursive()`, and `mapRecursive`.
-
-Due to limitations of TypeScript, recursive schema may not produce type errors when declared incorrectly. Using `ValidateRecursiveSchema` helps ensure that mistakes made in the definition of a recursive schema will introduce a compile error.
+You can create recursive types (nodes that contain nodes of the same type). Due to TypeScript limitations, this requires the `objectRecursive()`, `arrayRecursive()`, and `mapRecursive()` variants, and incorrect declarations may not produce type errors. Use `ValidateRecursiveSchema` to catch mistakes at compile time:
 
 ```typescript
 type _check = ValidateRecursiveSchema<typeof myRecursiveType>;
@@ -176,7 +167,7 @@ type _check = ValidateRecursiveSchema<typeof myRecursiveType>;
 
 ## Setting Properties as Optional
 
-To specify that a property is not required, pass it to the `SchemaFactory.optional()` method inline. The following example shows a schema with an optional property.
+Wrap a type in `SchemaFactory.optional()` to make a property optional:
 
 ```typescript
 class Proposal = sf.object('Proposal', {
@@ -189,14 +180,9 @@ class Proposal = sf.object('Proposal', {
 
 ### Avoid Optional Maps and Arrays
 
-In many cases, optional maps and optional arrays are an anti-pattern.
-This is because maps and arrays already have an empty state (e.g. a map with no entries, or an empty array []).
-For most applications, there is no meaningful difference between an empty map and a lack of a map, or between an empty array and a lack of an array.
-Unless you have a good reason (for example, when adding a map or array to an existing type), make maps and arrays required.
+Optional maps and arrays are usually an anti-pattern. Maps and arrays already have an empty state (no entries / `[]`), and for most applications an empty collection is equivalent to a missing one. Make maps and arrays required unless you have a specific reason (e.g., adding them to an existing type).
 
-When maps and arrays are optional, the application must check if the map or array is undefined at all read sites.
-Even worse, the application must do extra work when writing.
-If the map/array is not present, then the application must first create the map/array, and only then may populate it.
+When a map or array is optional, every read site must check for `undefined`, and every write site must first create the collection if absent before populating it:
 
 ```typescript
 const map = myNode.myMap;
@@ -207,20 +193,13 @@ if (map === undefined) {
 myNode.myMap.set("key", "value");
 ```
 
-Not only does this incur an extra write, but it is also lossy in the face of concurrent edits.
-If two users each create the map concurrently, then only one of their maps will end up in the document.
-The other map, and subsequent concurrent edits made to that map, will be lost.
+This incurs an extra write and is lossy under concurrent edits: if two clients both create the map concurrently, only one survives. The other map, and any edits made to it, are lost.
 
 ### Avoid Redundant Data
 
-It's undesirable to have the same data stored twice in multiple places in the document.
-This is because it requires multiple edits (or larger edits) to update the data rather than a single, scoped edit.
-Not only is this inefficient but it increases the chance of merge conflicts and it introduces an additional invariant into the document data: these two pieces of data must "stay in sync".
+Storing the same data in multiple places requires multiple edits to keep it in sync, increases merge conflicts, and adds document invariants that must be maintained.
 
-The following is an example of redundant data in the schema.
-Users are looked up in a map via their ID, but each user also contains its ID as a property.
-This is redundant.
-It's not necessary for the user to have the ID field, because to look up the user in the first place, you must already know that user's ID.
+For example, storing a user's ID both as a map key and as a property on the user is redundant — to retrieve the user from the map, you already know their ID:
 
 ```typescript
 class User extends sf.object("User", {
@@ -231,15 +210,11 @@ class User extends sf.object("User", {
 class Users extends sf.map("Users", sf.string, User) {}
 ```
 
-Data redundancy also applies to derived data.
-For example, suppose the document has a list of users, where each user has a score property.
-It might also be tempting to store a global "total score" property at the root of the document which is the sum of the scores of all users.
-However, this data is completely derived - it is fully computable from other data that is already in the document.
-Therefore (if not prohibitively expensive), it should be computed at runtime by the client - and possibly cached in memory if desired - but not cached in the document.
+Redundancy also applies to derived data. For example, a "total score" that is the sum of all users' scores is fully computable from existing data. Unless computing it is prohibitively expensive, calculate it at runtime (and cache in memory if needed) rather than storing it in the document.
 
 ### Factor Out Map and Array Value Types
 
-It is good practice to create named classes for the types that are stored in maps and arrays.
+Prefer named classes for types stored in maps and arrays:
 
 ```typescript
 class MyFoo extends sf.object("MyFoo", { foo: sf.string }) {}
@@ -250,13 +225,7 @@ class MyObject extends sf.object("MyObject", {
 }) {}
 ```
 
-Note that the two objects in the example above are structurally equivalent, but only one of them is given a name.
-In actuality, both have names, but the inlined one is given a name automatically generated by the system.
-Factoring out your type into a class with an explicit name has a few benefits:
+Both objects above are structurally equivalent, but only `MyFoo` has an explicit name (inlined types receive an auto-generated name). Using explicit names has two benefits:
 
-- You have more control over what kind of elements are allowed in your structures.
-For example, when moving elements between lists, the lists must contain elements with the same type name.
-By controlling the type name, you can control which elements can be moved across which lists, even when they are structurally equivalent.
-- It reduces the size of the generated .d.ts file.
-Because of the way that SharedTree schema types expand in the compiler, output files can grow to very large sizes if too many types are inlined.
-By giving the types names, the compiler can reference them via their name string rather than as the composition of all their inner data types.
+- **Type control**: When moving elements between arrays, both arrays must contain elements with the same type name. Explicit names let you control which elements can be moved across which arrays, even when they are structurally identical.
+- **Smaller `.d.ts` files**: SharedTree schema types can expand significantly in compiled output. Named types allow the compiler to reference them by name rather than inlining their full structure.

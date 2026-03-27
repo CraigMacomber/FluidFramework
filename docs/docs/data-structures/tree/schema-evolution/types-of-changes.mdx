@@ -3,11 +3,7 @@ title: Types of Schema Changes
 sidebar_position: 2
 ---
 
-# Types of Schema Changes
-
-Understanding which types of schema changes are safe versus breaking is crucial for evolving your [SharedTree](../index.mdx) schemas without disrupting existing applications.
-Writing a test using [`snapshotSchemaCompatibility`](../../../api/fluid-framework/#snapshotschemacompatibility-function) is highly recommended to ensure any schema changes maintain your compatibility requirements.
-Knowledge of the details below will still be needed to design schemas such that the required future changes can be compatible, and to understand any errors detected by the test.
+Understanding which schema changes are safe versus breaking is essential for evolving [SharedTree](../index.mdx) schemas without disrupting existing applications. Use a test with [`snapshotSchemaCompatibility`](../../../api/fluid-framework/#snapshotschemacompatibility-function) to verify compatibility requirements. The details below are needed to design schemas for future-compatible evolution and to interpret errors from that test.
 
 All the examples below are modifying this schema:
 ```typescript
@@ -20,8 +16,7 @@ class Note extends factory.object("Note", {
 
 ## Compatible Changes
 
-The following changes are [backwards compatible](./index.mdx#backwards-compatibility).
-However, it's important that applications carefully review whether the change is [forwards compatible](./index.mdx#forwards-compatibility) inherently or if a [staged rollout](./index.mdx#staged-rollouts) is necessary.
+The following changes are [backwards compatible](./index.mdx#backwards-compatibility). Review each to determine whether it is also [forwards compatible](./index.mdx#forwards-compatibility) or requires a [staged rollout](./index.mdx#staged-rollouts).
 
 ### Adding Optional Fields
 
@@ -38,9 +33,7 @@ class Note extends factory.object("Note", {
 }) {}
 ```
 
-To ensure [forwards compatibility](./index.mdx#understanding-compatibility), use [`allowUnknownOptionalFields`](../../../api/fluid-framework/objectschemaoptions-interface.md#allowunknownoptionalfields-propertysignature) to handle new optional fields added by newer clients.
-Note that this needs to already be set on the old clients before the field is added.
-If it's not already set, then this degenerates into an un-forwards compatible change and requires a [staged rollout](./index.mdx#staged-rollouts) - because the app has to stage the enabling of allowUnknownOptionalFields.
+For [forwards compatibility](./index.mdx#understanding-compatibility), set [`allowUnknownOptionalFields`](../../../api/fluid-framework/objectschemaoptions-interface.md#allowunknownoptionalfields-propertysignature) on existing clients _before_ adding the new field. If not already set, the change is forwards-incompatible and requires a [staged rollout](./index.mdx#staged-rollouts) to deploy `allowUnknownOptionalFields` first.
 
 ```typescript
 class Note extends factory.object("Note", {
@@ -57,7 +50,7 @@ BC | FC
 ---| ---
 ✅ | ❌
 
-**Note**: There is currently no way to make this change in a [forwards compatible](./index.mdx#forwards-compatibility) way.
+There is currently no way to make this change [forwards compatible](./index.mdx#forwards-compatibility).
 
 ```typescript
 class Note extends factory.object("Note", {
@@ -81,12 +74,12 @@ class Note extends factory.object("Note", {
 }) {}
 ```
 
-To achieve [forwards compatibility](./index.mdx#forwards-compatibility), staged allowed types can be used to [roll out](./index.mdx#staged-rollouts) support for reading before writing, allowing older clients to read data created with new types.
+To achieve [forwards compatibility](./index.mdx#forwards-compatibility), use staged allowed types to [roll out](./index.mdx#staged-rollouts) read support before write support, so older clients can handle data created with the new type.
 See [Rolling Out New Allowed Types](./allowed-types-rollout.mdx) for details.
 
 ## Incompatible Changes
 
-These changes are not supported because they would otherwise make newer clients unable to open older documents and older clients unable to open newer documents.
+These changes break backwards compatibility, forwards compatibility, or both — preventing some client versions from opening some document versions.
 
 ### Removing Fields
 
@@ -99,12 +92,9 @@ class Note extends factory.object("Note", {
 }) {}
 ```
 
-Backward compatibility: this change prevents newer clients from opening documents created with the old schema,
-because those documents will have the `text` field, which such clients are not equipped to read,
-and require the `text` field on new `Note` instances, which such clients are not equipped to write.
+Backward compatibility: newer clients cannot open old documents, which contain a `text` field they don't know how to read or write.
 
-Forward compatibility: this change prevents older clients from opening documents created with the new schema,
-because those documents will be missing the `text` field such clients want to read and write.
+Forward compatibility: older clients cannot open new documents, which are missing the `text` field they expect.
 
 ### Making Optional Fields Required
 
@@ -117,11 +107,9 @@ class Note extends factory.object("Note", {
 }) {}
 ```
 
-Backward compatibility: this change prevents newer clients from opening documents created with the old schema,
-because those documents may not have the `color` field, which such clients are expecting to be populated.
+Backward compatibility: newer clients cannot open old documents, which may lack the `color` field that is now required.
 
-Forward compatibility: this change prevents older clients from opening documents created with the new schema,
-because those documents will require the `color` field on new `Note` instances, which such clients are not guaranteed to write and expect to be able to clear.
+Forward compatibility: older clients cannot open new documents, which require `color` to be set — something older clients may not do and cannot clear.
 
 ### Changing Field Types
 
@@ -134,11 +122,9 @@ class Note extends factory.object("Note", {
 }) {}
 ```
 
-Backward compatibility: this change prevents newer clients from opening documents created with the old schema,
-because those documents will use the `string` type for the `id` field, which such clients read and write as `number`.
+Backward compatibility: newer clients cannot open old documents, which store `id` as `string` while the new schema treats it as `number`.
 
-Forward compatibility: this change prevents older clients from opening documents created with the new schema,
-because those documents will use the `number` type for the `id` field, which such clients read and write as `string`.
+Forward compatibility: older clients cannot open new documents, which store `id` as `number` while the old schema treats it as `string`.
 
 ### Removing Allowed Types
 
@@ -151,11 +137,9 @@ class Note extends factory.object("Note", {
 }) {}
 ```
 
-Backward compatibility: this change prevents newer clients from opening documents created with the old schema,
-because those documents can use the `number` type for the `color` field, which such clients read and write as `string`.
+Backward compatibility: newer clients cannot open old documents, which may store `color` as `number` — a type the new schema no longer allows.
 
-Forward compatibility: this change prevents older clients from opening documents created with the new schema,
-because those documents will only use the `string` type for the `id` field, which such clients can write as `number`.
+Forward compatibility: older clients cannot open new documents, which only store `color` as `string`, but older clients expected to also write it as `number`.
 
 ## See Also
 

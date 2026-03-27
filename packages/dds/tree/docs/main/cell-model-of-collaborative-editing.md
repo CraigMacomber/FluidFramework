@@ -1,27 +1,18 @@
 # The Cell Model of Collaborative Editing
 
-This document presents a conceptual model that provides a foundation upon which the semantics of SharedTree editing can be understood.
+A conceptual model providing a foundation for understanding SharedTree editing semantics. The model is not tied to SharedTree's data model — it abstracts what it means to edit a document.
 
-The model itself is not tied to SharedTree or SharedTree's data model.
-It is instead concerned with providing an abstraction for what it means to edit a document.
-
-The model only concerns itself with the editing of a single field.
-More complex structures (notably, trees) can be constructed by allowing the contents of the field to represent more fields.
+The model concerns a single field. More complex structures (notably, trees) are built by allowing field contents to represent more fields.
 
 ## Summary
 
-Previously we were trying to build the notion of tree locations (anchors) on top of nodes that are moving and popping in/out of existence.
+Building anchors on top of nodes that move and pop in/out of existence is complex. It's simpler to start with tree locations (cells) that never move or disappear, then layer moveable/removable nodes on top.
 
-It's simpler to start with a foundation of tree locations (cells) that never move/disappear, and then layer the idea of moveable/removable nodes on top of that.
-
-The impedance mismatch between our internal model and the semantics desired by users was making things unnecessarily complicated: forcing the internal model to be excessively general, and then requiring higher layers to compensate.
-The primary example being the use of constraints and/or hierarchical edits to constrain the semantics of insert/remove to fit the desired semantics of setting a fixed-sized field.
+The mismatch between an insert/remove model and user-facing semantics (particularly for fixed-sized fields) forced the internal model to be overly general and required higher layers to compensate with constraints and hierarchical edits. The cell model resolves this.
 
 ## Motivation
 
-We present here an example that portrays the challenges encountered by editing models based on insertion and removal.
-
-Consider a collaborative editing session between three participants (all acting concurrently), over a field populated with elements [A, B, C, D], where the edits are sequenced as follows:
+Consider a collaborative session with three concurrent participants over `[A, B, C, D]`, sequenced as follows:
 
 1. User 1: remove B, C (local state: [A, D])
 
@@ -31,66 +22,34 @@ Consider a collaborative editing session between three participants (all acting 
 
 4. User 1: undo the removal of B, C (local state: [A, B, C, D])
 
-The outcome we expect from such a session is [A, B, X, C, Y, D].
+The expected outcome is `[A, B, X, C, Y, D]`.
 
-Traditional models based on insertion and removal may fail to produce this outcome in two ways:
+Traditional insert/remove models may fail in two ways:
 
--   The order of X relative to Y may not be correct (i.e., Y may appear before X in the list of elements).
+-   X and Y may be ordered incorrectly — inserting relative to removed content loses precise position information.
+-   X and Y may end up outside B and C — the undo of B/C's removal is modeled as an insertion, losing their original positions. The same failure occurs when a move-out is undone and the undo is modeled as a reverse move.
 
--   The order the inserted element relative to the temporarily removed elements may not be correct (yielding either [A, X, Y, B, C, D] or [A, B, C, X, Y, D]).
+These failures can be fixed by adding tombstones, a "revive" operation, and a "return" operation. However, those additions:
 
-The first failure stems from the fact that, as the insertion of X and Y are made relative to removed content, information is lost as to their precise insertion point.
+-   Increase core model complexity.
+-   Produce a non-orthogonal operation set (insert, revive, and return overlap; "replace" would need to be added separately).
+-   Don't simplify optional fields (clearing still requires a slice-remove; overwriting requires slice-remove plus an insert with a meaningless position).
 
-The second failure stems from the fact that the undo of the removal of B, C by user 1 is modeled as an insertion.
-
-This second failure can also occur when elements are moved-out and the move is then undone (and the undo is modeled as a move in the opposite direction).
-
-These failures can be addressed by introducing new features:
-
--   Tombstones, which represent removed or moved-out elements
-
--   The "revive" operation which restores elements in the place of their tombstones
-
--   The "return" operation which moves elements back in the place of their tombstone.
-
-These additions, while effective, have the following drawbacks:
-
--   They increase the complexity of the core editing model
-
--   They lead to a set of operations that is not orthogonalized:
-
-    -   Insert, revive, and return seem to share some common traits, with revive and return being closer to each other.
-
-    -   It seems like it should be possible to support a "replace" operation that is similar to revive but with new elements instead of resurrecting removed ones, but that too needs to be added as separate operation)
-
-*   They do not alleviate the complexity of modeling an optional field (clearing the field requires a slice-remove operation over the field, overwriting the field requires that same slice-remove and an insert whose exact position is meaningless).
-
-The cell model can be thought of as a refactoring of both the traditional editing primitives and the above additions such that the listed drawbacks are avoided.
+The cell model refactors both the traditional primitives and these additions to avoid all of the above drawbacks.
 
 ## The Model
 
 ### Fields
 
-In this model, a field is a possibly empty sequence of cells.
-The sequence makes cells totally ordered.
-It is this ordering which serves as the foundation upon which the appropriate ordering of content is ensured.
+A field is a (possibly empty) sequence of cells. The sequence provides a total ordering, which is the foundation for correct content ordering.
 
 ### Cells
 
-In this model, a cell is a unit of storage.
-A cell cannot be subdivided.
-It may either be empty or full.
-The contents of a (full) cell may be arbitrarily large or small (though a specific data model may constrain this in practice).
+A cell is a unit of storage: indivisible, either empty or full. Its contents may be arbitrarily large or small (subject to data model constraints).
 
-> Note: the model does not prescribe for the cells to be explicitly reified.
-> While some cells may be represented at runtime some of the time, they are primarily a conceptual artifact.
-> An application would not have explicit access to the cell, and is likely not aware of the concept in the first place.
+> Cells are primarily a conceptual artifact — they need not be explicitly reified at runtime. Applications are not expected to be aware of them.
 
-A cell may be annotated with forwarding information that specifies a target destination cell.
-A single cell may bear any number of such forwarding annotations.
-This forwarding information is used to represent move information: the source cell is annotated with forwarding information that points to the destination cell.
-
-In addition to their storage role, cells act as markers relative to which an edit may be performed (e.g., "Before/after cell foo").
+A cell may carry forwarding annotations pointing to destination cells; this represents move information. Cells also act as stable markers for edit positions (e.g., "before/after cell foo").
 
 ### Operations
 
@@ -114,20 +73,13 @@ This reflects the fact that a client may perform an edit relative to some conten
 
 ## Building on the Model
 
-The model can be used to describe low-level edits that a client may perform on a field in a collaborative environment and by so doing imply some of their merge semantics.
+The model describes low-level edits a client may perform on a field in a collaborative environment, implying some of their merge semantics.
 
-We provide here two lists of such low-level edits, one for fields whose number of cells is fixed, and one for fields whose number of cells is dynamic.
-
-Note that the fixed and dynamic characteristics here apply only to the number of cells, not to the number of elements.
-For example, an optional field, which can contain zero or one element, is a fixed-sized field composed of exactly one cell.
-That cell exists even when the field is not populated with an element.
-
-The dichotomy has no basis in the cell model but reflects what we think is a sensible separation and matches industry-standard patterns of editing.
+Two lists follow: one for fixed-cell-count fields, one for dynamic-cell-count fields. "Fixed" and "dynamic" refer only to the number of cells, not elements. For example, an optional field (zero or one element) is a fixed-sized field with exactly one cell — that cell exists even when the field is empty. The distinction is a practical separation matching industry-standard editing patterns, not a fundamental property of the cell model.
 
 ### Edits on Dynamically-Sized Fields
 
-Dynamically-sized fields can be thought of as having list-like behavior: elements can be added anywhere in the list and removed at will which makes the list contents dynamically grow and shrink (while the number of cells in the list only grows).
-Dynamically-sized fields typically start out empty of any cell.
+Dynamically-sized fields behave like lists: elements can be added or removed freely, causing content to grow and shrink (while cell count only grows). They typically start with no cells.
 
 The low-level edits that such fields might support can be decomposed as follows:
 
@@ -153,8 +105,7 @@ The low-level edits that such fields might support can be decomposed as follows:
 
 ### Edits on Fixed-Sized Fields
 
-Fixed-sized fields can be used to model required (i.e., unary) fields, optional fields, fixed-sized arrays (not to be confused with JavaScript arrays which behave like dynamically-sized lists), and tuples.
-Fixed-sized fields are populated with their cells (and possibly content) from the time they are created.
+Fixed-sized fields model required (unary) fields, optional fields, fixed-sized arrays, and tuples. They are populated with cells (and possibly content) at creation time.
 
 The low-level edits that such fields might support can be decomposed as follows:
 
@@ -178,48 +129,32 @@ The low-level edits that such fields might support can be decomposed as follows:
 
     -   B: clear the (filled) cell
 
-The Move/Return operations described here assume both the source and the destination of the move are in the same kind of trait. This is not a requirement, though some combinations may be questionable.
+The Move/Return operations assume source and destination are in the same kind of trait; this is not a requirement, though some combinations may be questionable.
 
-Note that no further cell allocations are made after the field is created.
+No further cells are allocated after the field is created.
 
 ## Implications For SharedTree
 
 ### Data Model
 
-The SharedTree data model should differentiate between fixed-sized and dynamically-sized fields.
-Users of SharedTree, when writing a schema, implicitly choose whether to use fixed-size or dynamically-sized field.
-This is not a new choice (they're still choosing from the same set of options) but their choice is now reflected at the data model level.
+The SharedTree data model differentiates fixed-sized and dynamically-sized fields. Schema authors implicitly choose between them, and that choice is now reflected at the data model level.
 
 ### Editing API
 
-New editing operations need to be exposed for fixed-sized fields.
-
-The editing operations offered by SharedTree, even for unschematized data, need not be the ones prescribed by the model.
-Instead, we see value in offering two sets of higher-level operations: one for fixed-sized fields and one for dynamically-sized fields.
-This allows the editing API to be more specialized for each kind of field, which in turn allows the API to be more expressive and more familiar.
+Fixed-sized fields require new editing operations. The API doesn't have to use the model's primitives directly — it offers two higher-level operation sets, one per field kind, enabling a more expressive and familiar API for each.
 
 ### Merge Semantics
 
-The merge resolution logic can now exclude the possibility of having to merge operations from both sets within a single field (outside of schema migration scenarios).
-
-Since the merge resolution logic is specialized to each field kind, merge resolution logic becomes extensible: we can introduce new kind of fields with associated merge logic.
-This allows us to support new kinds of fields in the future, but more importantly it means that we can migrate from a less desirable set of merge semantics to a more desirable one.
-This dramatically reduces the negative impact of starting out with suboptimal merge semantics in early SharedTree releases because we can implement better ones later on and offer them as new kinds of fields.
+Merge resolution logic is specialized per field kind, which makes it extensible: new field kinds can introduce new merge logic. This means suboptimal early merge semantics can be improved later by adding new field kinds, without breaking existing ones.
 
 ### Changeset Format
 
-The changeset format should not be forced to adopt the primitive operations defined by the model as this would likely lead to bloat (such as specifying both "allocate" and "fill" for the insert edit).
-
-The changeset format may however be constructed in such a way that it could be translated to the primitive operations defined by the model.
-
-The changeset format also needs to represent the new kind of edits supported by fixed-sized fields.
+The changeset format need not use the model's primitive operations directly (e.g., "allocate" and "fill" for insert would be bloated). It may, however, be structured to translate to those primitives. It also needs to represent the new edits for fixed-sized fields.
 
 ### Change Application Logic
 
-While there is no imperative to do so, the change application logic of SharedTree, as an implementation detail, may be factored in a way that resembles the primitive operations defined by the format.
+The application logic may optionally be factored to resemble the model's primitives as an implementation detail.
 
 ### Cost of Tombstone Data
 
-By allowing some usage patterns to leverage fixed-sized fields, we are able to offer adequate merge semantics without incurring the cost of managing a potentially unbounded number of tombstones.
-This is particularly welcome because we conjecture that fixed-sized fields are more likely to see a lot of repeated overwrites.
-Dynamically sized fields typically contain more data, but the amount of removed content tends to remain proportional to the amount of tip-state content.
+Fixed-sized fields provide adequate merge semantics without an unbounded tombstone set. Dynamic fields typically have more data, but removed content tends to remain proportional to tip-state content — so tombstone overhead stays manageable there too.

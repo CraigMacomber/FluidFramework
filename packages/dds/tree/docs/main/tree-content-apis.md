@@ -1,22 +1,14 @@
 # Tree Content APIs
 
-Audience: Developers familiar with the Fluid Framework and tree data-structures.
-References to more specific concepts from Shared Tree, like FieldKinds, should be included where relevant, but the document should be understandable without knowing about them.
+**Audience:** Developers familiar with Fluid Framework and tree data structures. References to SharedTree-specific concepts (like FieldKinds) are included where relevant but not required to understand the document.
 
-Scope: **use-cases** and **goals** of APIs for accessing and editing the contents of shared tree.
-This includes possible future APIs, and the **use-cases** and **goals** for those APIs.
-This does NOT cover the actual details of these APIs or branch-related APIs for having multiple versions of the tree concurrently.
+**Scope:** Use-cases and goals for APIs that access and edit SharedTree contents — including possible future APIs. This does not cover API details or branch-related APIs for concurrent tree versions.
 
 ## Low Level APIs
 
-These API surfaces are mainly intended to abstract away concrete details of the implementation.
-They are designed to be able to be stable across future optimizations (such as compressed formats) and compatible with future features (like new FieldKinds).
+These APIs abstract away implementation details, remaining stable across optimizations (e.g., compressed formats) and compatible with future features (e.g., new FieldKinds). They exist to support the high-level APIs and allow different tree data representations to be optimized and compared without affecting those higher layers.
 
-These APIs exist to support writing the high level APIs.
-They are abstractions to allow optimizing the tree data representations without breaking or complicating the high-level API implementations.
-These abstractions also allow comparing performance and correctness between different data representations.
-
-It is currently undecided if these low level APIs will be part of the package's exported API set: even if they are not exported, keeping them stable should be practical, and ease supporting multiple different high level API versions at once.
+Whether these are part of the exported API set is undecided; keeping them stable either way eases supporting multiple high-level API versions simultaneously.
 
 ### Low Level Data Abstraction
 
@@ -65,13 +57,9 @@ Can also be used to update anything else that stores a copy of some of the tree 
 
 ## High Level APIs
 
-These APIs are built on-top of the low level APIs and make less of an effort to plan for forwards compatibility.
-Instead their focus is on providing an ideal developer experience for their users.
-Ideally these APIs will be able to be updated incrementally with non-breaking changes,
-but in the event that major breaking changes are needed a new high level API can be created to address the new needs,
-and can be maintained in parallel with the older APIs until they are deprecated and removed.
+Built on the low-level APIs, these focus on providing an ideal developer experience rather than forward-compatibility planning. They can be updated incrementally; if major breaking changes are needed, a new high-level API can be created and maintained alongside the old one until deprecation.
 
-Note that currently all of these APIs are available on [FlexTree](../../src/feature-libraries/flex-tree/README.md) allowing the ideal one to be selected by the user from a single object.
+Currently all of these APIs are available on [FlexTree](../../src/feature-libraries/flex-tree/README.md), allowing the user to select the desired one from a single object.
 
 ### JavaScript Object like API
 

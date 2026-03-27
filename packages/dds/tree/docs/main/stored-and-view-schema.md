@@ -2,8 +2,7 @@
 
 This document covers our chosen design from the design space defined by [Stored and View Schema Options](./stored-and-view-schema-options.md).
 
-This diagram shows the schema related data for a typical Fluid Tree powered application and a document for it.
-The edges show dependencies/references.
+The diagram below shows schema-related data for a typical FluidTree application. Edges show dependencies/references.
 
 ```mermaid
 graph LR;
@@ -38,75 +37,49 @@ graph LR;
     end
 ```
 
-The `Application Code`'s schema (the "View Schema") are code, and thus can include TypeScript types for the schema.
-The "Stored Schema" from the documents are data, and thus do not contain TypeScript types.
+View Schema (application code) can include TypeScript types. Stored Schema (document data) cannot.
 
-When the Container is loaded, Schematize uses the Schema Adapters to present the Tree from the document (which complies with the Stored Schema) as a Tree complying with the View Schema. Then the application logic can use the per schema TypeScript types to have type safe schema aware access to the tree.
+On container load, Schematize uses Schema Adapters to present the document tree (conforming to Stored Schema) as a tree conforming to the View Schema, enabling type-safe schema-aware access.
 
 ## Schema Evolution Design Pattern
 
-To support making changes to schema used in existing documents:
+**If existing data is compatible with the new schema** (new schema permits a superset of what the old one did):
 
-If existing data will always be compatible with the new schema (new schema permits a superset of what the old one did):
+- Update the view schema to accept the new format while still supporting the old.
+- Ensure the app handles documents containing the new format but does not yet write it. Options (TODO: pick one):
+  - Use the new schema as the view schema; edit carefully.
+  - Support both view schemas and have Schematize pick based on the stored schema.
+  - Condition new-format writes on a flag initialized from stored schema compatibility.
+- Wait for the above to be deployed to most users.
+- Update the app to write the new stored schema and enable the new functionality.
 
--   Update view schema to accept the new format (must still support the old format).
--   Ensure the app can properly handle documents containing the new format but does not switch documents to the new format.
-    There are a few approaches (TODO: we should pick one of these, and document how to actually do it cleanly):
-    -   Use new schema as the view schema, and be careful when editing.
-    -   Have the app support both view schemas (new and old) and
-        have schematize pick which to use based on which is the stored schema.
-    -   Make which format is written for new content conditional on a flag (which opts into creating data that needs the new format).
-        Initialize this flag based on if the new schema is compatible with the stored schema.
--   Wait for above to be deployed to most users.
--   Update or configure app such that it writes the new schema to the document's stored schema, and starts thus using the new functionality that enables.
+**If existing data may be incompatible with the new schema:**
 
-If existing data could be incompatible with the new schema:
-
--   Author new schema (with a new type identifier)
--   Add support for it in the application.
-    This may optionally be done by using the new schema as the view schema (removing the old one), and providing schematize with a handler to do the update/conversion.
--   Recurse this algorithm updating the parent to accept the new schema (which in most cases will hit the "If existing data is compatible with the new schema" case.)
+- Author a new schema with a new type identifier.
+- Add support for it in the application (optionally use it as the view schema, providing Schematize with a migration handler).
+- Apply the above algorithm to the parent schema (usually hits the compatible case).
 
 ### Schema Versioning
 
-This migration strategy results in two kinds of changes to schema:
+This migration strategy produces two kinds of schema changes:
 
-1. An updated copy of a schema with a new type identifier.
-2. An updated copy of a schema with the same type identifier (and tolerates strictly more trees than the old version).
+1. An updated copy with a new type identifier.
+2. An updated copy with the same identifier that tolerates strictly more trees.
 
-In both of these cases, keeping the old schema around in the application source code is useful, but in different ways.
-This section covers a pattern for efficiently managing all the old schemas that accumulate over time,
-meaning that we do not place any O(number of old schema) complexity into any code.
+In both cases, keeping the old schema in source is useful but for different durations.
 
-Old schema in case #2 only need to be kept until the migration is complete, meaning deployed applications are allowed to write the new more flexible format.
+**Case #2:** Keep only until migration completes (deployed apps may write the new format). During migration, keep both and test that the new schema is a superset. Afterward, delete: the old schema, code that creates data in the old format, and the superset test. Naming convention: `*CompatibilitySchema` (old) and `*Schema` (new). The new schema may be expressed as a declarative relaxation of the old one, then replaced with a standalone implementation when the old one is deleted.
 
-During the migration, both can be kept and a test can be used to confirm that the new schema actually permits a superset of what the old one did.
+**Case #1:** Keep forever to support old documents. Schemas have different identifiers (UUID or versioned name). The old schema plus upgrade adapters are packaged into a legacy library loaded by Schematize. The old schema need not appear anywhere else in source code (though it may appear in documents).
 
-Once the migration is done, all code depending on the old schema can be deleted which should just be:
+### Schema Migration Examples
 
--   the old schema itself
--   support for creating data in that format when inserting it into the document
--   the above mentioned test
+Using schema pseudocode:
 
-The two schema could be kept straight by calling them `*CompatibilitySchema` and `*Schema` respectively.
-
-It would also be possible to express the new one as a declarative upgrade to the old one (via a set of relaxations to parts of it), and then replace it with a normally coded one (not based on the old one) when deleting the old one.
-
-Old schema in case #1 has much longer term implications: they need to live forever to support old documents.
-
-In this case, the schemas have different identifiers, which could either be random (ex: UUID), or a developer friendly name including a version.
-The old schema, and handlers which can upgrade the data to the new format, get packed into a library which can be loaded into schematize to provide legacy schema support.
-
-The old schema will not need to be mentioned anywhere else in source code (it may be mentioned in documents though!).
-
-### Schema Migration examples
-
-As we don't have a schema language yet, consider this schema pseudocode.
-
-If we start with:
+Starting schema:
 
 ```typescript
-// We need some way to express the unique identifiers. Just going to add them after the name for the API for now, and use versions not UUIDs for this example.
+// Identifiers shown as version suffixes for clarity.
 Canvas: CanvasV1 {
     items: Circle | Point
 }
@@ -122,12 +95,11 @@ Point: PointV1 {
 }
 ```
 
-Then update this doing the desired schema change.
-This is our new view schema:
+New view schema (changing `radius` to `diameter`):
 
 ```typescript
 Canvas: CanvasV1 {
-    items: Circle | Point // Note this implicitly refers to CircleV2 now.
+    items: Circle | Point // Now implicitly refers to CircleV2
 }
 
 Circle: CircleV2 {
@@ -141,191 +113,111 @@ Point: PointV1 {
 }
 ```
 
-To enable support for legacy documents we separately package
+Legacy support package:
 
 ```typescript
-// The original canvas schema, moved/renamed out of the way (Case #2 above: kept until migration is finished).
-// TODO: details on how we se this during the migration to avoid premature format updates before rollout is complete.
+// Original canvas schema (Case #2: kept until migration finishes)
 CanvasCompatibility:CanvasV1{
     items: CircleV1 | Point
 }
 
-// The original circle schema, moved/renamed out of the way (Case #1 above: kept forever)
+// Original circle schema (Case #1: kept forever)
 CircleV1:CircleV1{
     center: Point
     radius: number
 }
 ```
 
-And with CircleV1, we provide an adapter for use with schematize that can handle a CircleV1 when a Circle (aka Circlev2) is expected.
+With `CircleV1`, provide an adapter for Schematize that upgrades `CircleV1` when `CircleV2` is expected.
 
-## Open questions in proposed design
+## Open Questions
 
 ### How to deal with rebasing of schema changes?
 
-Like any other edit, schema changes can be concurrent and need rebasing.
-Doing this will need careful design, both to avoid schema violation in documents and to provide a nice app-facing API for handling cases where their schema changes conflicted and thus were apparently undone in an incompatible way.
-These cases (where a schema change gets reverted/undone or conflicted) mean that the monotonic approach of schema changes always relaxing constraints cannot apply everywhere, and thus may be worth reconsidering.
+Schema changes can be concurrent and need rebasing. This requires careful design to avoid schema violations and to provide a sensible API for handling conflicts (e.g., a schema change that gets reverted). This also complicates the monotonic "schema changes only relax constraints" approach, which may be worth reconsidering.
 
-### How should we deal with transient out of schema states while editing?
+### How to deal with transient out-of-schema states while editing?
 
-Use edit primitives that avoid this?
-
-ex: swap instead of remove and insert. Maybe a version of detach that inserts a placeholder which has to be replaced with valid data before the transaction ends? That seems like it could make the tree reading API for the middle of transactions messy.
+Use edit primitives that avoid this? For example: swap instead of remove+insert, or a detach variant that inserts a placeholder requiring replacement with valid data before the transaction ends (though this may complicate the tree reading API mid-transaction).
 
 ### Do we need bounded open polymorphism?
 
-Definitions for adjectives used with polymorphism:
+Definitions:
+- **unbounded/bounded:** whether all types are permitted, or constrained (by explicit list, structural interface, or nominal interface)
+- **open/closed:** whether a new type can be used in a field without modifying the field's declaration
 
--   unbounded: all types/values are permitted.
--   bounded: constrained by something e.g. an explicit list of types, a structural interface type (like a typescript or Go interface), a nominal interface (which the type must declare it implements, like a java interface or typescript class with protected members).
--   open: does not require modifying the declaration of the field to create a new type which can be used in it.
--   closed: requires modifying the declaration of the field to create a new type which can be used in it.
-
-The example schema system includes bounded closed polymorphism (via unions in fields), and unbounded open polymorphism (via fields with unconstrained types). However, it does not support bounded open polymorphism. If support for bounded open polymorphism was added, it would be done by modifying TreeFieldStoredSchema.type. See its doc comment for details.
-
-There are a few reasons to leave bounded open polymorphism out of initial versions:
-
--   It is possible to add in the future without breaking existing documents and could be incrementally adopted in new and updated schema.
-    Thus there is little cost to delaying its implementation.
--   There are several ways it could be implemented.
-    This means we will have to make some design decisions which will take time, and might be able to make better informed later.
--   It complicates the implementation, requiring time to test and implement.
+The current schema system has bounded closed polymorphism (unions in fields) and unbounded open polymorphism (unconstrained fields), but not bounded open polymorphism. This can be added in the future without breaking existing documents, so it is deferred. See `TreeFieldStoredSchema.type` doc comment for details.
 
 ## Approaches for Bounded Open Polymorphism
 
-Despite these reasons to delay worrying about it, it is worth outlining some of the approaches which are practical to make sure they are sufficient to handle the desired use-cases. Deciding which of these approaches we actually want is a separate issue.
+**Key distinction:** We care about enabling bounded open polymorphism at the application level, not necessarily in the schema system directly. Applications may want to constrain types based on application capabilities (e.g., what the app can draw), not data shape. Some patterns are achievable at the app level without schema system changes.
 
-Before listing the approaches, it's important to note what we really care about is enabling applications to do bounded open polymorphism.
+**Application-level approaches:**
 
-This distinction is important for two reasons:
+- **Computed closed type sets at build/load time.** The app computes which types meet its requirements (structurally, nominally, or behaviorally) and programmatically constructs a closed schema. Different apps may produce different sets, so this is mainly suited to view schema. Options for stored schema:
+  - Use the same schema as view schema initially, update later.
+  - List only the types actually used in the document; update the field schema when new types are inserted.
+  - Use open polymorphism in stored schema.
 
-1. Applications may want to constrain the types based on what the application can do with the types, not the structural shape of their data (ex: canvas might want to limit its children to things the app has code to draw, not things that have some particular fields like a top left point).
-2. There are some ways we can implement bounded open polymorphism-like patterns at the app level without requiring direct support in the schema system.
+- **Hand-coded type lists.** Similar to above, but statically maintained. Build errors can catch missing updates; practical when all allowed types are known at build time.
 
-Some approaches for bounded open polymorphism at the applications level:
+- **Open polymorphism everywhere.** Handle unexpected values in the app.
 
--   Build view schema with a closed set of types on app load or build:
+- **Nominal open polymorphism in the schema.** Types explicitly declare membership in named typesets/interfaces. Stored/view schema compatibility checks can include verifying these align.
 
-    The application can compute a closed set of types which meet it's requirements:
-
-    -   structural e.g. require specific fields
-    -   nominal: Specific types opt in to some named set of types they want to be included in.
-    -   behavioral: All types supporting some specific functionality/[behavior](https://en.wikipedia.org/wiki/Aspect-oriented_programming)).
-
-    This can be used to programmatically construct a schema using closed polymorphism while exposing it as open polymorphism to the application authors/schema language.
-    This has the issue that different applications might come up with different sets of types so this approach is mainly suitable for view schema.
-
-    There are a few options for how to handle the stored schema (listed below).
-    Note that all these approaches potentially have to deal with cases where the app's view schema does not match the stored schema.
-    If one group controls all the apps and the versions of them in use, it's possible to ensure that all apps support all types that will occur in the stored schema and tooling could be made for this (ex: generate the set of types as a build step, check in the results and ensure it only grows, then be careful with version roll-outs to roll out view support for types before versions that insert them).
-
-    -   initially use the same schema used for view and update later (ex: when a different app performs an edit inserting something the first app doesn't support)
-    -   just list the minimal set of types actually used in the document in that field, and update the field schema to allow new types when needed used.
-    -   use open polymorphism
-
--   The above, but hand code the type lists.
-
-    It should be possible to get build errors if you don't update it, so this should be practical if all allowed types are statically known when building the app (ex: no dynamically loaded plugins that add extra types).
-
--   Use open polymorphism in the stored and view schema. Handle unexpected values in the app.
--   Build a nominal open polymorphism system into the schema, allowing types to explicitly declare they are a member of a particular typeset/interface.
-
-    Compatibility between stored and view schema can include checking these align.
-
--   Add a structural constraints that can be applied to field's children.
-    There are a few design choices for this:
-
-    -   How deep does it go?
-        -   Allow constraints to apply further constraints on the children recursively.
-        -   Allow only constraining the immediate children beyond the constraints their type implies.
-    -   Are the constraints applied to types or values?
-
-        -   Types: compute, based only on the schema, which types are allowed under which constraints.
-            This only permits types where all possible values meet the constraints. `allowsTreeSuperset` can compute if a type is allowed.
-        -   Values: compute, based only on the value, if it's allowed under which constraints.
-
-            For example, a type with an optional field could be placed under a constraint which required it, if the particular instance of the value had the field.
-            This adds more `context` (same tree might be valid in one place and invalid in another due to these constraints).
-            This would be difficult to support as stored schema due to needing to reject edits that are in schema for the type, but violate a structural constraint.
-            Making this work soundly when combined with concurrent moves which change which structural constraints apply would be hard.
+- **Structural constraints on field children.** Design choices:
+  - Depth: apply constraints recursively or only to immediate children.
+  - Target: types (all possible values of the type meet the constraint) vs. values (this particular instance meets the constraint). Value-based constraints add context-dependence and complicate stored schema enforcement and concurrent-move interactions.
 
 ## Inheritance Notes
 
-Inheritance is a conflation of a specific kind of nominal bounded open polymorphism with reuse of implementation/declaration for some common parts of the types.
-These aspects can be separated, allowing for a more flexible system than one based on inheritance.
+Inheritance conflates nominal bounded open polymorphism with declaration/implementation reuse. Separating these aspects enables a more flexible system.
 
-Inheritance is sometimes useful for concisely expressing specific types:
-we can gain this benefit by implementing it as syntactic sugar for some reuse mechanism
-(ex: a way to include fields from another type or standalone set of fields) combined with some bounded open polymorphism mechanism (pick from the above approaches).
+Inheritance can be useful for concise type expression; it can be implemented as syntactic sugar combining a reuse mechanism (e.g., including fields from another type) with a bounded open polymorphism mechanism (from the approaches above).
 
 # Schedule
 
-What work we need to do for each milestone in the [roadmap](../roadmap.md).
-
 ## M2
 
-Review and polish [Schema Migration Design Pattern](#schema-evolution-design-pattern) including actual APIs, documentation, and examples so apps can start planning forward compatibility for documents.
-
-Pick concrete answers for the flexible areas in the design that need to be nailed down for document compatibility.
-This includes how values/primitives work and what our initial set of primitive types will be.
+Review and polish the [Schema Migration Design Pattern](#schema-evolution-design-pattern) including actual APIs, documentation, and examples so apps can begin planning forward compatibility. Nail down concrete answers for flexible design areas (primitives/values and the initial set of primitive types).
 
 ## M2 or M3
 
-Implement enough functionality to perform the steps in the above design pattern.
+Implement enough functionality to execute the steps in the design pattern.
 
 ## M3
 
-Polish up and finalize schema language, schema-aware APIs, and make sure APIs are statically typed and result in data staying in schema (including fuzz testing and maybe some proofs).
+Finalize the schema language, schema-aware APIs, and static typing. Ensure APIs keep data in schema (fuzz testing and/or proofs).
 
 ## Sometime after M3
 
-Schema/Shape optimized storage formats and optimize schematize for these formats and for known stored schema.
+Schema/shape-optimized storage formats. Additional functionality (prioritize based on users):
 
-Support additional functionality (prioritize based on users). Some examples we might do:
-
--   other options for stored schema
--   imperative extensions to view schema
--   more specific multiplicity options
--   helpers for schema migrations
--   support and/or helpers for bounded open polymorphism.
--   allow metadata for app use in view (and maybe stored) schema
--   default values:
-    -   Maybe default values in stored schema can make schema migrations more flexible (ex: adding value fields), and provide a hint for compression.
-    -   Maybe default values in view schema can provide an API-like value fields but for fields stored as optional? What about defaults for sequences?
-    -   Maybe as a special case usage or a more general constants system?
--   helpers and patterns for enums
+- Other stored schema options
+- Imperative extensions to view schema
+- More specific multiplicity options
+- Helpers for schema migrations
+- Bounded open polymorphism support/helpers
+- App-use metadata in view (and maybe stored) schema
+- Default values (stored schema compression hints; optional-field-as-value-field patterns; constants system)
+- Enum helpers and patterns
 
 # Misc Notes
 
 ## Schema DDS
 
-The stored schema could be in its own DDS.
-This would be particularly practical if we add a way (or find a pattern) for DDS_s to perform cross DDS transactions.
-Maybe the tree DDS could be optionally configured with a schema DDS which it uses for stored schema (could allow sharing schema between documents).
-Readonly (for most people) public schema documents would compose interestingly with this.
-
-Even if we can't make it work as a separate DDS, it should be implemented such that it would be easy to reuse the code as a schema-DDS.
+The stored schema could live in its own DDS, especially if cross-DDS transactions are supported. The tree DDS could optionally be configured with a schema DDS for its stored schema, enabling shared schema across documents. Even without a separate DDS, the code should be structured to make a schema DDS easy to extract.
 
 ## TypeScript Typing
 
-It is be possible to have an embedded DSL for schema declaration in the style of [typebox](https://www.npmjs.com/package/@sinclair/typebox) which produces both compile time types and runtime schema data.
-This allows for schema-aware APIs (for example for tree reading and editing) to be provided without code gen.
+A [typebox](https://www.npmjs.com/package/@sinclair/typebox)-style embedded DSL for schema declaration can produce both compile-time types and runtime schema data, enabling schema-aware APIs without code generation. This could be extended further (though not necessarily usefully) to provide:
 
-It's possible to take this schema-aware static typing much further though (but it may not be useful to do so).
+- A `SchemaRegistry` collecting both runtime and compile-time type data.
+- Type-safe schema update APIs.
+- Typed document load/viewing (e.g., type-check that the view supports the expected stored schema, with strongly typed adapters/reencoders for Schematize).
 
-This static typing could be used to provide:
-
--   A SchemaRegistry that also collects runtime and compile type data.
--   Type safe APIs for schema updates e.g. updating a stored schema gives back a new schema repository that includes the changes.
--   Ways to type document load/viewing e.g. provide an expected stored schema with the document, and type check that the view supports it, optionally including strongly typed handles/adapters/reencoders for schematize.
-
-Regardless of the typescript typing, the stored schema can be checked against the view schema to skip schematize where possible.
-Schema-supersettting can be also used to determine if a schema is safe for reading but not writing.
+Regardless of TypeScript typing, stored schema can be checked against view schema to skip Schematize where possible. Schema supersetting can determine whether a schema is safe for reading but not writing.
 
 ## Reuse and Polymorphism
 
-This document generally covers where schemas can be stored and how they can be used, and not the specifics of what they actually do.
-
-Another way to put that is this is about what the Fluid tree needs from a schema system, and what options that leaves for how such a schema system could work,
-and not about how to use those options to actually build a schema system.
+This document covers where schemas are stored and how they are used, not the specifics of what they do (i.e., what FluidTree needs from a schema system and what design options that leaves open — not how to build the schema system itself).

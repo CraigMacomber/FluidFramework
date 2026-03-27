@@ -2,18 +2,13 @@
 title: Recommended Init Flow
 ---
 
-# Recommended Init Flow
-
-This guide describes the recommended initialization flow for SharedTree to avoid common pitfalls when creating or loading collaborative sessions.
+This guide describes the recommended initialization flow for `SharedTree` to avoid common pitfalls when creating or loading collaborative sessions.
 
 ## Overview
 
-When working with SharedTree, the most critical rule is to **never initialize after [connecting to the container](../../build/containers.mdx#connecting-to-a-container)**.
+The most critical rule: **never initialize after [connecting to the container](../../build/containers.mdx#connecting-to-a-container)**.
 
-Connecting a new container before initializing it creates a dangerous race condition.
-Other clients can connect to the container and see an uninitialized tree.
-They will think they need to initialize it themselves, so they'll send their own initialization operations.
-When the original client's initialization operation finally gets processed, all other clients' initialization attempts will be rejected and thrown away, potentially causing data loss and inconsistent state.
+Connecting before initializing creates a race condition: other clients can join, see an uninitialized tree, and send their own initialization operations. When the original client's operation is processed, all others are rejected, potentially causing data loss.
 
 The solution: initialize **before** connecting when creating a new container. Use `compatibility.canInitialize` to validate assumptions and catch bugs early.
 
@@ -48,13 +43,7 @@ sequenceDiagram
 
 ### Why This Works
 
-By initializing **before** connecting (calling `attach()`), this pattern ensures:
-
-- The tree is fully initialized before other clients can connect
-- No race condition where multiple clients try to initialize simultaneously
-- The first client to create the container is the only one that initializes
-
-The explicit check for `canInitialize === true` serves as an assertion. If `canInitialize` is `false`, something went wrong during container creation. This check catches bugs early and makes debugging easier.
+Initializing before `attach()` ensures the tree is fully ready before any other client can connect. The check for `canInitialize === true` acts as an assertion — if it's `false`, something went wrong during container creation.
 
 ## Path 2: Loading an Existing Container
 
@@ -83,7 +72,7 @@ sequenceDiagram
 
 ### Why This Works
 
-The explicit check for `canInitialize === false` serves as an assertion. If `canInitialize` is `true`, the tree wasn't properly initialized before. This check catches bugs early and makes debugging easier.
+The check for `canInitialize === false` acts as an assertion — if it's `true`, the tree was never properly initialized before being shared.
 
 ## Complete Code Example
 
@@ -144,12 +133,11 @@ export class CollaborationFluidClient {
 
 ## Key Takeaways
 
-- Use `compatibility.canInitialize` to validate assumptions about container state
-- Always initialize **before** connecting (calling `attach()`) on new containers
-- Treat `canInitialize` as an assertion to catch bugs early
-- The two paths are completely separate:
-  - Creation path: create → view → initialize → connect → save ID
-  - Loading path: load → view → use existing data
+- Always initialize **before** calling `attach()` on new containers.
+- Use `compatibility.canInitialize` as an assertion to detect incorrect state early.
+- The two paths are mutually exclusive:
+  - **Creation**: create → view → initialize → attach → save ID
+  - **Loading**: load → view → use existing data
 
 ## See Also
 

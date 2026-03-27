@@ -2,31 +2,20 @@
 
 ## Introduction
 
-This document discusses how tree data is conceptually organized within the SharedTree DDS.
-It is primarily of interest to Fluid developers working on SharedTree.
-Most SharedTree users will interact with tree data through a pre-existing API layer.
-However, the data model may be of interest to advanced users who are implementing a specialized API (see [#8989](https://github.com/microsoft/FluidFramework/issues/8989)).
+How tree data is conceptually organized in SharedTree, primarily for Fluid developers. Advanced users implementing specialized APIs (see [#8989](https://github.com/microsoft/FluidFramework/issues/8989)) may also find this useful.
 
-The SharedTree data model is closely related to, but not precisely the same as:
-
--   The internal in-memory representation of tree data
--   The serialized tree data sent across the network
--   The format used to persist tree data in storage
-
-While each of the above involve specific encodings of the SharedTree data model, the SharedTree data model itself is not concerned with the byte-level representation (see [#10034](https://github.com/microsoft/FluidFramework/issues/10034)).
+The SharedTree data model is related to but distinct from the in-memory representation, network-serialized format, and persisted storage format. Each is a specific encoding of the data model; the model itself is not concerned with byte-level representation (see [#10034](https://github.com/microsoft/FluidFramework/issues/10034)).
 
 ## Requirements
 
 ### JSON Interoperability
 
-We take it as a given that the underlying data model for the SharedTree is tree-structured data.
-We also agree that JSON is the modern lingua franca of the web and services.
-We therefore begin with the following requirements:
+SharedTree's data model is tree-structured. Since JSON is the lingua franca of the web, the data model must:
 
-1. JSON can efficiently and losslessly be encoded by the underlying SharedTree data model, with a small number of possible caveats (see below).
-2. Deviations from JSON in the underlying SharedTree data model must be well justified.
+1. Efficiently and losslessly encode JSON (with minor caveats below).
+2. Justify any deviations from JSON.
 
-Consequently, we require that the underlying SharedTree data model can express the following in a natural way:
+The data model must express the following naturally:
 
 -   Object-like records of named properties
 -   Array-like sequences of consecutive items (non-sparse)
@@ -34,45 +23,35 @@ Consequently, we require that the underlying SharedTree data model can express t
 
 #### Potential JSON Caveats
 
-We currently know of two potential caveats regarding JSON interoperability.
-
 ##### Arbitrary Precision Numbers
 
-As defined, the JSON specification allows numbers to be of arbitrary precision.
-Some systems honor this by parsing JSON into a representation that uses an alternative numeric encoding than IEEE 64b floating point format.
-However, JavaScript's built-in `JSON.parse()` does not.
-Therefore, we do not currently see a need to preserve arbitrary precision numbers in M1.
+JSON allows arbitrary-precision numbers, but `JSON.parse()` uses IEEE 64-bit float. We don't currently need to preserve arbitrary precision in M1.
 
 ##### Reserved Keys
 
-Projecting arbitrary SharedTree data to JSON requires tradeoffs due to the fact that the SharedTree data model is a superset of JSON.
-Specifically, the SharedTree data model includes special fields for ids and types.
-Preserving these special fields in the JSON encoding will require the use of reserved keys or a reserved key prefix.
+SharedTree's data model is a superset of JSON and includes special fields for ids and types. Projecting to JSON requires reserved keys or a reserved key prefix for these.
 
 ##### Primitives with Ids and Augmentations
 
-A second complication when projecting SharedTree data to JSON is that the JSON encoding does not support fields on primitive types, such as numbers and booleans.
-In order to preserve ids and augmentations on primitives, we will need to wrap the primitives in objects using the reserved type field to identify which objects represent encoded primitives.
+JSON primitives (numbers, booleans) can't carry fields. To preserve ids and augmentations on primitives, they must be wrapped in objects using the reserved type field to identify the encoded primitive.
 
 ### Durable References
 
-The data model must support creating inexpensive durable references to nodes within the tree.
-This includes scenarios like creating "share link" URLs or building graph-like relationships within the tree.
+The data model must support inexpensive durable references to nodes — for use cases like "share link" URLs and graph-like relationships.
 
 ### Schema
 
-While the data model is schema agnostic, the data model must encode sufficient information that a system opting into a schema-on-write policy can efficiently implement schema validation on top of the underlying data model (see #9282).
+The data model is schema-agnostic but must encode enough information for a schema-on-write system to efficiently validate data (see #9282).
 
 ### Augmentation
 
-The data model must allow a subset of collaborators to unobtrusively attach extra-schema data to the tree in a way that is ignored (but preserved) by clients that are unaware of these augmentations.
+Collaborators must be able to attach extra-schema data to the tree in a way that is ignored (but preserved) by clients unaware of the augmentation.
 
 ## Model
 
 ### Node
 
-In the SharedTree data model, each addressable piece of data is represented as a tree **_node_**.
-There is an implicit node at the root of the SharedTree that serves as the initial insertion point for trees constructed by the application..
+Each addressable piece of data is a tree **_node_**. An implicit root node serves as the initial insertion point for application-constructed trees.
 
 <figure align="center">
   <img src="../.attachments/root.drawio.svg" alt=""/>
@@ -91,45 +70,37 @@ Values are used to store scalar data, such as numbers and booleans.
   <figcaption>Figure: Nodes with values</figcaption>
 </figure>
 
-From the perspective of the SharedTree data model, values are [**_opaque_**](https://en.wikipedia.org/wiki/Opaque_data_type), immutable byte sequences.
-
-In practice, node values are Fluid [**_serializable_**](https://github.com/microsoft/FluidFramework/blob/main/packages/runtime/datastore-definitions/src/serializable.ts) types and can be interpreted as such using schema information.
+From the data model's perspective, values are [**_opaque_**](https://en.wikipedia.org/wiki/Opaque_data_type), immutable byte sequences. In practice they are Fluid [**_serializable_**](https://github.com/microsoft/FluidFramework/blob/main/packages/runtime/datastore-definitions/src/serializable.ts) types interpreted via schema.
 
 ### Field
 
-Each tree node has a set of zero or more fields.
-Fields are used to model map-like composite types, where each **_field_** represents one relationship between a parent node and an ordered **_sequence_** of one or more children.
+Each node has zero or more fields. Each **_field_** represents one relationship between a parent node and an ordered **_sequence_** of one or more children.
 
 <figure align="center">
   <img src="../.attachments/children.drawio.svg" alt=""/>
   <figcaption>Figure: A parent node with two fields</figcaption>
 </figure>
 
-The fields of a node are distinguished by a field **_key_**.
-From the data model's perspective, field keys are opaque byte sequences.
-In practice, dynamic keys are string literals and static keys are identifiers that correspond to a schema field declaration.
+Fields are distinguished by a **_key_** — opaque byte sequences from the data model's perspective. In practice, dynamic keys are string literals; static keys are schema-declared identifiers.
 
 ### Sequences
 
-In the SharedTree data model abstraction, there is no distinction between a field that always contain a single child and a field that can contain multiple children.
-Instead, SharedTree treats all fields as ordered collections and uses schema to restrict which fields are optional, must contain a single value, or may contain multiple values.
+SharedTree makes no distinction between single-child and multi-child fields. All fields are ordered collections; schema restricts multiplicity (optional, single, or multiple).
 
 #### Implicit Sequences
 
-When mapping the SharedTree data model to conventional programming languages, it is sometimes helpful to think of the sequence as being distinct from the field, as if each field points to an **_implicit sequence_** object.
+When mapping to conventional programming languages, it's sometimes helpful to think of each field as pointing to an **_implicit sequence_** object.
 
 <figure align="center">
   <img src="../.attachments/implicit-sequence.drawio.svg" alt=""/>
   <figcaption>Figure: Visualizing implicit sequence of 'key' field</figcaption>
 </figure>
 
-However, it is important to remember that sequences are not tree nodes.
-This means that sequences are not directly addressable.
-The combination of the field + sequences is implicitly created when the first item is inserted, implicitly deleted when the last item is removed, and may only be referenced indirectly via the combination of parent node + field key.
+Sequences are not tree nodes and are not directly addressable. The field+sequence combination is implicitly created on first insert, implicitly deleted on last remove, and is only referenced via parent node + field key.
 
 #### Explicit Arrays
 
-Most languages represent sequences with an explicit array object. As opposed to an implicit sequence, these explicit array objects have identity, are directly addressable, and can be moved within the tree. To model explicit array objects in the SharedTree data model, one introduces a node between the parent and items.
+Most languages use an explicit array object with identity, direct addressability, and moveability. To model this in SharedTree, introduce a node between the parent and items.
 
 <figure align="center">
   <img src="../.attachments/explicit-sequence.drawio.svg" alt=""/>
@@ -138,27 +109,15 @@ Most languages represent sequences with an explicit array object. As opposed to 
 
 ### Special Fields
 
-This section covers fields that receive special treatment in the SharedTree data model.
-These fields are special because:
-
--   They have reserved keys
--   They are universally available on all nodes (regardless of schema)
--   They can not be targeted by normal tree operations.
+Special fields have reserved keys, are universally available on all nodes regardless of schema, and cannot be targeted by normal tree operations.
 
 #### Type
 
-The SharedTree data model optionally supports nominal typing via an optional special _type_ field.
-The value of the _type_ field is the unique identifier of the corresponding schema type.
-
-In the data model abstraction, the value of the type field is an opaque byte sequence.
-However, there is a set of well-known types (_boolean_, _number_, etc.) that are transparent to the underlying implementation.
+An optional _type_ field supports nominal typing; its value is the unique schema type identifier. In the data model abstraction the value is an opaque byte sequence, but a set of well-known types (_boolean_, _number_, etc.) are transparent to the implementation.
 
 #### Id
 
-The SharedTree data model optionally supports durable references to tree nodes via a special _id_ field.
-When present, the _id_ field is used by SharedTree to provide a bidirectional _id_ ⟷ _node_ index that provides efficient lookup of nodes by their id.
-This is the underlying building block for features like "share link" URLs and graph-like references within the tree.
-Because there is a cost to maintaining with the _id_ ⟷ _node_ index, the application may choose which nodes are assigned ids.
+An optional _id_ field supports durable node references. When present, SharedTree maintains a bidirectional _id_ ⟷ _node_ index for efficient lookup — the building block for "share link" URLs and graph-like references. Applications choose which nodes receive ids due to the index maintenance cost.
 
 ## JSON Comparison
 

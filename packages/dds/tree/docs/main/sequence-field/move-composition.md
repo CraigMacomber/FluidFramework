@@ -1,46 +1,28 @@
 # Move Composition
 
-A move of a node in a sequence field is represented by a pair of marks:
-a MoveOut at the initial location of the node to be moved, and a MoveIn at the location the node will be moved to.
-Each of these move pairs is identified by a ChangeAtomId.
+A move in a sequence field is represented by a pair of marks: a `MoveOut` at the node's original location and a `MoveIn` at the destination. Each move pair is identified by a `ChangeAtomId`.
 
-For various reasons, we preserve the intermediate move steps when composing a series of moves of the same node.
-Note the cell IDs are changed at the intermediate locations, so it is necessary to record some information about the intermediate steps.
-The composition of move1, moving a node from A to B, with move2, moving the same node from B to C (where A, B, and C are distinct cells),
-is represented with MoveOut1 at A, MoveIn2 at C, and AttachAndDetach(MoveIn1, MoveOut2) at B.
-We say that the composite change in this example contains a single move chain which consists of move1 and move2 as its move atoms.
-Note that a move chain may have only a single move atom.
-Composition of move chains may lead to the creation of arbitrarily long move chains.
+When composing a series of moves of the same node, intermediate move steps are preserved (cell IDs change at intermediate locations, so this information must be recorded). Composing move1 (A→B) with move2 (B→C) produces: `MoveOut1` at A, `MoveIn2` at C, and `AttachAndDetach(MoveIn1, MoveOut2)` at B. The resulting composite change contains a single **move chain** consisting of move1 and move2 as **move atoms**. A chain may contain a single atom; composing chains can produce arbitrarily long chains.
 
-To allow efficient processing a move chain without having to traverse all its elements,
-in a chain consisting of more than one atom each endpoint (the first MoveOut and last MoveIn of the chain)
-will have its `finalEndpoint` field set to the ID of the other endpoint.
+For efficient chain traversal without visiting all elements, each chain with more than one atom has its `finalEndpoint` field set on both endpoints (the first `MoveOut` and the last `MoveIn`) to the ID of the other endpoint.
 
-When composing a move chain which starts at A and ends at B with a move chain which starts at B and ends at C, we call cell B the pivot of the chains.
-Each of the chains will have a endpoint at B, which we call the inner endpoint. The other endpoint of each chain is called the outer endpoint.
+## Composing Two Chains at a Pivot
 
-In the common case when composing chains we notice that the chains are moving the same node when we encounter the inner endpoints.
-Each inner endpoint stores the ID of the corresponding outer endpoint.
-We set `MoveEffect.endpoint` for each outer endpoint to be the other outer endpoint.
-When we encounter each outer endpoint we update its `finalEndpoint` to `MoveEffect.endpoint`,
-unless `MoveEffect.truncatedEndpoint` is also defined (see below), in which case we use that instead.
+When composing a chain ending at B with a chain starting at B, B is the **pivot**. Each chain has an **inner endpoint** at B and an **outer endpoint** at the other end.
 
-A special case arises when the location outer endpoint of one of the move chains is the location of an intermediate move in the other move chain.
-For example, the first chain might consist of move1 from A to B, and the second chain consist of move2 from B to A and move3 from B to C.
-The endpoints of the composed move are at the locations of the outer endpoints (A and C) as usual,
-but the starting endpoint of the composed move will be the second chain's MoveOut (move3) at A instead of the first chain's outer endpoint at A (the MoveOut from move1).
-This follows from the rules for composing attach and detach marks at the same cell (A in this case).
-We can think of the composed move chain as truncating from `A -move1-> B -move2-> A -move3-> C` to `A -move3-> C`.
-We call the MoveOut from move3 the truncated endpoint and the MoveOut from move1 the redundant endpoint.
-We call the MoveIn from move3 the ordinary endpoint.
+In the common case, chains are recognized as moving the same node when inner endpoints are encountered. Each inner endpoint stores the ID of its outer endpoint. `MoveEffect.endpoint` is set on each outer endpoint to the other outer endpoint. When each outer endpoint is encountered, its `finalEndpoint` is updated to `MoveEffect.endpoint` — unless `MoveEffect.truncatedEndpoint` is also defined (see below).
 
-We detect that we are in such a scenario when processing the location of the redundant and truncated endpoints.
-We set `MoveEffect.truncatedEndpointForInner` for the inner endpoint from the redundant move chain to the ID of the truncated endpoint.
-If we already know the ordinary endpoint (because we already processed the pivot and have `MoveEffect.endpoint` for the redundant endpoint)
-we also set `MoveEffect.truncatedEndpoint` for the ordinary endpoint.
+## Truncated Endpoints
 
-When processing the pivot, if `MoveEffect.truncatedEndpoint` is defined for an inner endpoint,
-we copy its value into `MoveEffect.truncatedEndpoint` for the corresponding outer endpoint (which will be the ordinary endpoint).
+A special case arises when the outer endpoint of one chain coincides with an intermediate move location in the other chain. For example: chain 1 is move1 (A→B); chain 2 consists of move2 (B→A) and move3 (B→C). The composed move endpoints are at the outer endpoints (A and C), but the starting endpoint is chain 2's `MoveOut` (move3) at A, not chain 1's outer endpoint (move1's `MoveOut` at A). This follows from the rules for composing attach/detach marks at the same cell.
 
-Note that there are two places where we may set `truncatedEndpoint` on the ordinary endpoint.
-This is necessary for composition to complete with a single amend pass regardless of whether we happen to process the pivot or the truncation point first.
+The composed chain is conceptually truncated from `A -move1-> B -move2-> A -move3-> C` to `A -move3-> C`. Terminology:
+- **Redundant endpoint:** the `MoveOut` from move1 (the one being dropped)
+- **Truncated endpoint:** the `MoveOut` from move3 (the one that replaces it)
+- **Ordinary endpoint:** the `MoveIn` from move3
+
+This scenario is detected when processing the redundant and truncated endpoint locations. `MoveEffect.truncatedEndpointForInner` is set for the inner endpoint from the redundant chain to the truncated endpoint's ID. If the ordinary endpoint is already known (i.e., the pivot was already processed and `MoveEffect.endpoint` is set for the redundant endpoint), `MoveEffect.truncatedEndpoint` is also set on the ordinary endpoint.
+
+When processing the pivot: if `MoveEffect.truncatedEndpoint` is defined for an inner endpoint, its value is copied to `MoveEffect.truncatedEndpoint` on the corresponding outer endpoint (the ordinary endpoint).
+
+`truncatedEndpoint` on the ordinary endpoint may be set at two different points during processing. This is required to ensure composition completes in a single amend pass regardless of whether the pivot or the truncation point is processed first.

@@ -1,158 +1,99 @@
 # Compatibility
 
-This document provides concrete guidelines and strategies for organizing code that impacts SharedTree's persisted format.
+Concrete guidelines and strategies for organizing code that impacts SharedTree's persisted format.
 
 ## Prerequisites
 
-[This document](../../../../../packages/dds/SchemaVersioning.md) provides general "best practices" for working with persisted data within the Fluid Framework.
-It's strongly recommended to read through and understand its rationale before continuing with this document,
-as most of the concrete recommendations presented henceforth fall out of those best practices.
+Read [this document](../../../../../packages/dds/SchemaVersioning.md) for general best practices on persisted data in Fluid Framework. Most recommendations here follow directly from those best practices.
 
 ## What State is Persisted?
 
-A DDS's persisted format encompasses the format it uses for its summaries as well as its ops (due to [trailing ops](../../../README.md))
-including transitively referenced structured blob data.
+A DDS's persisted format covers its summary format, its ops (due to [trailing ops](../../../README.md)), and transitively referenced structured blob data.
 
-Since documents are stored outside of Fluid control (i.e. no type of central data migration is possible),
-DDSes necessarily commit to backwards compatibility of their format for all time.
+Since documents are stored outside Fluid control, DDSes commit to backwards compatibility of their format permanently.
 
 ## Format Management
 
-The persisted format version should be a configuration option an application author can specify using `SharedTreeFactory`:
-this ensures applications can control rollout of configuration changes which require code saturation of some prior version.
-It also empowers the container author (rather than the host--if they differ) to control their data model.
+The persisted format version should be a configuration option in `SharedTreeFactory`, giving application authors control over rollout of format changes (which require code saturation of a prior version) and letting the container author (rather than the host) control the data model.
 
-In the SharedTree MVP, there is currently no mechanism for safely changing the persisted format version.
-However, it is feasible to add such a mechanism in the future, and specifying the persisted format explicity in configuration sets us up to easily do so.
-One example of prior art in the space is `@fluid-experimental/tree`'s [format-breaking migration strategy](../../../../../experimental/dds/tree/docs/Breaking-Change-Migration.md),
-though we would likely want to make the mechanism usable across the Fluid Framework.
+In the SharedTree MVP, no mechanism for safely changing the persisted format version currently exists, but one is feasible to add. Specifying the version explicitly in configuration sets us up for this. Prior art: `@fluid-experimental/tree`'s [format-breaking migration strategy](../../../../../experimental/dds/tree/docs/Breaking-Change-Migration.md).
 
 ## Code Organization
 
-Each part of SharedTree which contributes to the persisted format should define:
+Each part of SharedTree contributing to the persisted format should define:
 
-1. Types defining the _in-memory format_ needed to load or work with its data
-1. A set of versioned _persisted formats_ which encompass all supported formats in the current and past.
-1. EITHER An `IJsonCodec` capable of transcoding between the in-memory format and a particular persisted format, OR an `ICodecFamily` of such `IJsonCodec`s (for different persisted format versions)
+1. Types for the _in-memory format_ needed to load or work with its data
+2. Versioned _persisted formats_ for all supported (current and past) formats
+3. Either an `IJsonCodec` transcoding between in-memory and a specific persisted format, or an `ICodecFamily` of such codecs (for multiple versions)
 
-Split the above components into files as is reasonable.
-Current organizational standards put:
+File naming conventions:
+- In-memory format → `*Types.ts`
+- Persisted format → `*Format.ts`
+- Codecs → `*Codec.ts` / `*Codecs.ts`
 
--   The in-memory format into a file ending in `Types.ts`
--   The persisted format into a file ending in `Format.ts`
--   Codecs into a file ending in `Codec.ts` / `Codecs.ts`
+Consistent naming makes format changes obvious at review time. Primitive schemas used in persisted formats but not defining formats (e.g., branded strings) can go where convenient.
 
-Having consistent conventions for these files helps to make changes to persisted formats obvious at review time.
-Schemas for primitive types which are used in persisted formats but don't intrinsically define formats (such as branded strings) can be defined where convenient.
-Codec logic should generally be self-contained: all imports should either be of the form `import type`, or should import from another persisted format file.
-Importing Fluid Framework libraries that have the same guarantees (e.g. `SummaryTreeBuilder`) is also acceptable.
-Codecs should expose the minimal necessary set of types.
-Encoding should take care to only include necessary object properties. **In particular, avoid constructs like object spread**.
-Decoding should validate that the data is not malformed: see [encoding validation](#encoding-validation) for more details.
+Codec guidelines:
+- Codec logic should be self-contained: all imports should be `import type`, or from another persisted format file. Imports from Fluid Framework libraries with equivalent guarantees (e.g., `SummaryTreeBuilder`) are also acceptable.
+- Expose the minimal necessary set of types.
+- Encoding: include only necessary object properties. **Avoid object spread.**
+- Decoding: validate that data is not malformed (see [Encoding Validation](#encoding-validation)).
+- Storage format types (other than primitives) must never appear in the public API.
 
-With the exception of primitives, storage format types should never be exposed in the public API.
-
-> Note: due to API-extractor implementation details, the typebox schemas for primitive types _cannot_ share a name with the primitive type,
-> as it exposes _both_ the value and the type exported under the same name, even if the export is specified via `export type`.
-> For example, the typebox schema for `ChangesetLocalId` is named `ChangesetLocalIdSchema`.
-
-Using this structure, SharedTree will have access to a library of codecs capable of encoding/decoding between
-the in-memory format and some persisted format.
+> Note: due to API-extractor implementation details, typebox schemas for primitive types _cannot_ share a name with the primitive type — both the value and the type are exported under the same name even with `export type`. For example, the typebox schema for `ChangesetLocalId` is `ChangesetLocalIdSchema`.
 
 ## Encoding Validation
 
-Validating that an encoded format thoroughly matches what the code expects and failing fast otherwise is valuable to reduce the risk of data corruption:
-it's a lot easier to investigate and deploy fixes for documents when incompatible clients haven't also changed the contents of a file.
+Thoroughly validating encoded formats and failing fast reduces data corruption risk: it's much easier to fix documents when incompatible clients haven't also modified them.
 
-For this reason, encoded data formats should declare JSON schema for the purpose of runtime validation.
+Encoded data formats should declare JSON schemas for runtime validation. We use [typebox](https://github.com/sinclairzx81/typebox) for this (its API closely matches TypeScript's expressiveness).
 
-> In the near term, we're using [typebox](https://github.com/sinclairzx81/typebox) to declare these schemas.
-> This choice is a matter of convenience: its API naturally matches the expressiveness of typescript types.
-
-Since format validation does incur runtime and bundle-size cost to obtain additional safety,
-whether or not to perform it should ultimately be left as a policy choice to the user of shared-tree.
-This choice will probably also be made in the shared-tree factory by providing a `JsonValidator`,
-but it doesn't need to be persisted and can be changed at will
-(there's no issue with collaboration between clients that have different policies around how much
-of the persisted data should be validated).
-
-An out-of-the-box implementation of `JsonValidator` based on Typebox's JSON validator is provided,
-but application authors may feel free to implement their own.
+Whether to validate is a policy choice left to SharedTree users (validation incurs runtime and bundle-size costs). This will likely be configurable in `SharedTreeFactory` via a `JsonValidator`. It doesn't need to be persisted and can differ between collaborating clients without issue. An out-of-the-box `JsonValidator` backed by Typebox is provided; application authors may implement their own.
 
 ## Test Strategy
 
-This section covers types of tests to include when adding new persisted configuration.
+When adding new persisted configuration, consider three dimensions:
 
-There are a couple different dimensions to consider with respect to testing:
-
-1. SharedTree works correctly for all configurations it can be initialized in when collaborating with SharedTrees with similar configuration
-1. SharedTree is compatible with clients using different source code versions of SharedTree (and the documents those clients may create)
-1. Once supported, SharedTree can correctly execute document upgrade processes (changes to persisted configuration such as write format)
+1. SharedTree works correctly for all configurations when collaborating with similarly configured instances.
+2. SharedTree is compatible with clients using different source code versions (and documents those clients create).
+3. SharedTree can correctly execute document upgrade processes (once supported).
 
 ### Configuration Unit Tests
 
-Each codec family should contain a suite of unit tests which verify the in-memory representation can be round-tripped through encoding and decoding.
-When adding a new codec version, the test data for this suite should be augmented if existing data doesn't yield 100% code coverage on the new
-codec version.
+Each codec family should have unit tests verifying round-trip encoding/decoding of the in-memory representation. When adding a new codec version, augment the test data to achieve 100% coverage on the new version.
 
-If the persisted configuration impacts more than just the data encoding step,
-appropriate unit tests should be added for whatever components that configuration impacts.
-As a simple example, a persisted configuration flag which controls whether SharedTree stores attribution information
-should have unit tests which verify processing ops of various sorts yield reasonable attribution on the parts of the tree they affect.
+If the configuration impacts more than just encoding, add unit tests for all affected components. Example: a flag controlling attribution storage should have tests verifying that ops produce correct attribution on affected tree parts.
 
 Example: [experimental/dds/tree2/src/test/feature-libraries/editManagerCodecs.spec.ts](../../src/test/feature-libraries/editManagerCodecs.spec.ts)
 
-### Multiple-configuration Functional Tests
+### Multiple-Configuration Functional Tests
 
-Once SharedTree supports multiple persisted formats, we should modify a small set of functional acceptance tests
-(e.g. `sharedTree.spec.ts`) to run for larger sets of configurations.
-Using `generatePairwiseOptions` will help mitigate the combinatorial explosion concern.
+Once multiple persisted formats are supported, a small set of functional acceptance tests (e.g., `sharedTree.spec.ts`) should run across broader sets of configurations. Use `generatePairwiseOptions` to mitigate combinatorial explosion.
 
-These tests in aggregate will verify that SharedTree works when initialized with some particular configuration
-and collaborates with other SharedTree instances initialized with the same configuration.
-They would reasonably detect basic defects in codecs or problems unrelated to backwards compatibility or any upgrade process.
-
-In the same vein, fuzz tests should cover a variety of valid configurations.
+These tests verify that SharedTree works when initialized with a given configuration collaborating with instances using the same configuration. They detect basic codec defects and problems unrelated to backwards compatibility. Fuzz tests should also cover a variety of valid configurations.
 
 ### Snapshot Tests
 
-The last dimension of compatibility concerns direct or indirect collaboration between clients using different versions of SharedTree source code.
-This is a vast area that could use more well-established framework testing support, but snapshot testing is a relatively effective category for
-catching regressions.
+Snapshot tests verify that documents produced by one version of the code remain usable in another. Implementation: write code to generate fixed "from scratch" documents, source-control their serialized summaries, then verify that:
 
-The idea behind snapshot testing is to verify a document produced using one version of the code is still usable using another version of the code.
-It's typically implemented by writing some code to generate a set of fixed documents "from scratch," then source-controlling the serialized form
-of those documents after summarization.
-Since the serialized form of the documents correspond to documents produced by an older version of the code, this enables writing a test suite that verifies:
+1. The current code serializes each document to exactly match the older serialization.
+2. The current code can load documents written by older code.
 
-1. The current version of the code serializes each document to exactly match how the older version of the code serialized each document.
-1. The current version of the code is capable of loading documents written using older versions of the code.
+Examples:
+- [Legacy SharedTree](../../../../../experimental/dds/tree/src/test/Summary.tests.ts)
+- [Sequence / SharedString](../../../sequence/src/test/snapshotVersion.spec.ts)
+- [e2e Snapshot tests](../../../../test/snapshots/README.md)
 
-A few examples (which may not be exhaustive) of snapshot tests are:
+The first two generate documents by calling DDS APIs directly. The e2e tests serialize the op stream alongside snapshots and replay it, enabling verification that runtime behavior matches between old and current code.
 
--   [Legacy SharedTree](../../../../../experimental/dds/tree/src/test/Summary.tests.ts)
--   [Sequence / SharedString](../../../sequence/src/test/snapshotVersion.spec.ts)
--   [e2e Snapshot tests](../../../../test/snapshots/README.md)
+> Note: Different snapshots may produce logically equivalent DDSes at load time (e.g., Matrix permutes permutation vectors and cell data, which doesn't change logical content). Runtime equivalence checks give friendlier error messages in these cases.
 
-The first two examples generate their "from scratch" documents by directly calling DDS APIs on a newly created document.
-The e2e snapshot tests accomplish "from scratch" generation by serializing the op stream alongside the snapshots and replaying it.
-In addition to verifying serialized states line up between old and current version of the code, it can also be helpful to
-verify equivalence at runtime, which typically gives more friendly error messages.
-
-> Aside: this approach is also a bit more flexible: it's possible that different snapshots can load to produce logically equivalent DDSes.
-> Matrix is an example of this: it uses a pair of permutation vectors mapping logical indices (i.e. "row 5, column 3") to in-memory indices for the contents of cells.
-> Thus, permuting both the permutation vectors and the cell data contained within a snapshot would not logically change its data.
-
-Snapshot tests are effective at catching changes which inadvertently modify the document format over time.
-
-Tree2's full-scale snapshot tests can be found at [experimental/dds/tree2/src/test/snapshots/summary.spec.ts](../../src/test/snapshots/summary.spec.ts),
-with smaller-scale snapshot tests (e.g. snapshot testing just the SchemaIndex format) nearby.
+Tree2's full-scale snapshot tests: [experimental/dds/tree2/src/test/snapshots/summary.spec.ts](../../src/test/snapshots/summary.spec.ts). Smaller-scale snapshot tests (e.g., just `SchemaIndex`) are nearby.
 
 # Implementation Specifics
 
-SharedTree's codecs are frequently composed over each other in a manner consistent with SharedTree's layering.
-This conveniently allows unit testing only portions of the persisted data.
-As a downside, it makes maintaining backwards compatibility with the format somewhat more complex, because not all codecs in this composition provide explicit versions for the portion of data they encode.
+SharedTree's codecs are composed in layers consistent with SharedTree's architecture, enabling unit testing of individual format portions. The downside: maintaining backwards compatibility is more complex, as not all codecs in the composition provide explicit versions.
+
 The following diagram shows _runtime dependencies_ of the codec hierarchy for SharedTree's original persisted format.
 
 ```mermaid
@@ -186,12 +127,9 @@ flowchart TD
     class FieldBatchCodec,SchemaCodec,ForestCodec,MessageCodec,EditManagerCodec,DetachedNodeToFieldCodec versioned
 ```
 
-In this diagram, large borders represent 'top-level codecs', i.e. codecs which directly define the data format for a summary blob or op.
-Orange codecs provide explicit versions to the data they encode.
+Large borders = top-level codecs (directly define a summary blob or op format). Orange = explicitly versioned.
 
-> Field kind codecs are actually corecursive with ModularChangeset's codec with respect to the encoded data. That doesn't significantly affect guidance around updating the persisted format.
-
-Entries in this diagram align with the following in code:
+> Field kind codecs are corecursive with `ModularChangeset`'s codec in the encoded data. This doesn't significantly affect guidance around updating the persisted format.
 
 | Codec (chart entry)                                                                           | In-memory type                  |
 | --------------------------------------------------------------------------------------------- | ------------------------------- |
@@ -210,68 +148,46 @@ Entries in this diagram align with the following in code:
 | [ForbiddenFieldCodec](../../src/feature-libraries/default-schema/noChangeCodecs.ts)           | N/A                             |
 | [DetachedNodeToFieldCodec](../../src/core/tree/detachedFieldIndexCodec.ts)                    | DetachedFieldSummaryData        |
 
-Because all data is versioned at the top level, we can conceptually extend that version to include all other non-explicitly versioned containing data, even if that data isn't explicitly written by the same codec.
-For example, a format change in `SchemaChangeCodec` could be implemented by adding support for a new version on each of its nearest explicitly versioned consumers, i.e. `MessageCodec` and `EditManagerCodec`.
-This new version would use the same code for all bits of `MessageCodec`, `EditManagerCodec`, and `SharedTreeChangeFamilyCodec`, but pass enough context down to `SchemaChangeCodec` to resolve to the newer format.
-In this manner, the mapping between explicitly versioned data and implicitly versioned data for composed codecs is managed in code.
+Because all data is versioned at the top level, non-explicitly-versioned codecs' versions are implicitly covered by the top-level version. For example, a format change in `SchemaChangeCodec` can be implemented by adding a new version to its nearest explicitly versioned consumers (`MessageCodec` and `EditManagerCodec`), which use new code only to pass the right version context down to `SchemaChangeCodec`.
 
 ## Auditing Codec Resolution
 
-Because the dependencies between different codec versions are distributed over the various codec layers,
-it can be hard to understand the relationship between top-level `SharedTreeFormatVersion` values from [sharedTree.ts](../../src/shared-tree/sharedTree.ts)
-and the myriad of codec versions available.
-To help audit such relationships, the `getCodecTreeForSharedTreeFormat` function in [sharedTree.ts](../../src/shared-tree/sharedTree.ts) can be used.
-Snapshots of the dependencies are captured in the ["SharedTree Codecs"](../../src/test/shared-tree/sharedTreeCodecs.spec.ts) test suite and can be inspected [on disc](../../src/test/snapshots/codec-tree/SharedTreeFormatVersion.v1.json).
+The relationship between top-level `SharedTreeFormatVersion` values and the many available codec versions can be hard to trace. Use `getCodecTreeForSharedTreeFormat` in [sharedTree.ts](../../src/shared-tree/sharedTree.ts) to audit these relationships. Dependency snapshots are captured in the ["SharedTree Codecs"](../../src/test/shared-tree/sharedTreeCodecs.spec.ts) test suite and can be inspected [on disk](../../src/test/snapshots/codec-tree/SharedTreeFormatVersion.v1.json).
 
-## Current code guidelines
+## Current Code Guidelines
 
-Codecs which explicitly version their data should export a codec which takes in a write version and supports reading all supported versions.
-The write version will ultimately come from the user of SharedTree
+**Explicitly versioned codecs** should export a codec that accepts a write version and supports reading all supported versions.
 
-Codecs which do not explicitly version their data should export a codec family.
-This ensures that the consumer of the codec can use their versioning information to resolve the appropriate implicit version.
+**Implicitly versioned codecs** should export a codec family, enabling consumers to resolve the appropriate implicit version using their own versioning information.
 
-Using the same example as above, under these guidelines `SharedTreeChangeFamilyCodec` and `SchemaChangeCodec` should export codec families for composition purposes.
-To make a breaking change in `SchemaChangeCodec`,
+Example — breaking change in `SchemaChangeCodec`:
 
--   Add support for the new version in `SchemaChangeCodec`, adding it to the exposed codec family
--   Add a new version for `SharedTreeChangeFamilyCodec` which leverages the new `SchemaChangeCodec`
--   Add a new version for `EditManagerCodec` which leverages the new `SharedTreeChangeFamilyCodec`
--   Add a new version for `MessageCodec` which leverages the new `SharedTreeChangeFamilyCodec`
--   Add an option to `SharedTreeFormatVersion` as a new write version
-    -   Make this write version create edit manager & message codecs of the appropriate versions
-    -   Be sure to document code saturation requirements which must be met before the new version can be used
+1. Add the new version to `SchemaChangeCodec` and include it in the exported codec family.
+2. Add a new version of `SharedTreeChangeFamilyCodec` that uses the new `SchemaChangeCodec`.
+3. Add new versions of `EditManagerCodec` and `MessageCodec` using the new `SharedTreeChangeFamilyCodec`.
+4. Add a new `SharedTreeFormatVersion` write version that creates edit manager and message codecs of the appropriate versions; document code saturation requirements before it can be used.
 
-## Example: New format for optional-field
+## Example: New Format for Optional-Field
 
-A new format was introduced for optional-field in [this PR](https://github.com/microsoft/FluidFramework/pull/20341).
+A new format was introduced in [this PR](https://github.com/microsoft/FluidFramework/pull/20341).
 
-> This PR should have also included code changes which began writing this format in messages! That was instead made shortly after in [this commit](https://github.com/microsoft/FluidFramework/commit/0fafbebcd3324fc481bd8464f09ab15d595b4a57).
+> This PR should have also started writing the new format in messages; that was instead done shortly after in [this commit](https://github.com/microsoft/FluidFramework/commit/0fafbebcd3324fc481bd8464f09ab15d595b4a57).
 
-That format was added as an option for `SharedTree` users in [this PR](https://github.com/microsoft/FluidFramework/pull/20615).
+The format was exposed as a user option in [this PR](https://github.com/microsoft/FluidFramework/pull/20615). Delaying exposure in `SharedTreeFormatVersion` allows iteration on the new format before committing to permanent compatibility.
 
-Waiting to expose the new format in `SharedTreeFormatVersion` has the benefit of allowing iteration on the new format without preserving compatibility.
-Once the format is exposed & released to users, it must be supported indefinitely.
+## Example: New Schema Format
 
-## Example: New schema format
+A new schema format and codec were introduced as part of the persisted metadata feature in [this PR](https://github.com/microsoft/FluidFramework/pull/24812). At a high level:
 
-As part of the persisted metadata feature, a new schema format and codec were introduced in [this PR](https://github.com/microsoft/FluidFramework/pull/24812).
+- Add schema FormatV2 and its codec
+- Add a new SharedTree format version
+- Simple-tree changes
+- Feature flag for enabling SharedTree Format v5
 
-At a high level, the change had the following parts:
-
-- Add schema FormatV2
-- Schema codec for FormatV2
-- Add a new Shared Tree format version
-- simple-tree changes
-- Feature flag for enabling Shared Tree Format v5
-
-The PR description goes into further detail and breaks down the changes in each area.
+The PR description breaks down the changes in each area.
 
 ## Possible Improvements
 
-As can be seen by the example above, under current guidelines, the size of the code change for a new format will vary depending on how deeply nested the implicitly versioned codec is (through codec composition layers).
-We could restructure the general approach taken to 'resolve all implicitly versioned codecs' immediately and pass this information through to all codecs.
-This would remove the need for intermediate map entries, but it would make re-layering the way codecs compose more difficult.
+The code change size for a new format currently scales with the depth of the implicitly versioned codec in the composition hierarchy. An alternative: resolve all implicitly versioned codecs eagerly and pass this through to all codecs. This removes the need for intermediate map entries but makes re-layering codec composition harder.
 
-Another improvement we may want to consider is lazily creating codecs for a given version.
-This should be relatively straightforward by tweaking `makeCodecFamily`'s API.
+Another option: lazily create codecs for a given version. This would be a straightforward change to `makeCodecFamily`'s API.

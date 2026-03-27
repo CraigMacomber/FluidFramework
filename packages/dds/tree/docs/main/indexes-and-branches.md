@@ -2,142 +2,58 @@
 
 ## Indexes
 
-[shared-tree-core](../../src/shared-tree-core/README.md) defines the type `Index` which fills the same role Indexes do [in databases](https://en.wikipedia.org/wiki/Database_index).
-Because of this, shared-tree can be though of as a tree database which is interacted with through a collection of indexes.
-To avoid needing an abstraction to storing the actual underlying document content, all persisted document data is actually owned by the indexes.
-In database terms this means that we use [covering indexes](https://en.wikipedia.org/wiki/Database_index#Covering_index) to answer all queries.
-Concretely this is done by [shared-tree](../../src/shared-tree/README.md) providing a `ForestIndex` which is is a covering index (stores the actual data from each tree node), optimized for retrieving (and editing) parts of subtrees by path.
-Schema data is similarly handled by `SchemaIndex`.
-In the future we will have more index implementations, which can provide functionality like accelerating lookup of nodes (in `ForestIndex`) by identifiers, text search etc.
+[shared-tree-core](../../src/shared-tree-core/README.md) defines `Index`, which plays the same role as [database indexes](https://en.wikipedia.org/wiki/Database_index). SharedTree can be thought of as a tree database interacted with through a collection of indexes; all persisted document data is owned by indexes, meaning we use [covering indexes](https://en.wikipedia.org/wiki/Database_index#Covering_index) to answer all queries.
 
-Indexes are updated when the Fluid document (contents of the Shared Tree) is edited, and are persisted in Fluid summaries.
+In practice, [shared-tree](../../src/shared-tree/README.md) provides `ForestIndex` — a covering index that stores actual tree node data, optimized for subtree retrieval and editing by path. `SchemaIndex` handles schema data similarly. Future indexes could accelerate lookup by node identifier, text search, etc.
 
-It is possible to have indexes which only have performance implications (never cause ops to apply differently), which optimistically cache some data in memory and persist nothing.
-For simplicity we will consider these just like persisted indexes, where their persisted information is empty, and this document will focus on solving the harder general problem of indexes which may persist some data.
-
-It is also possible for indexes to only keep a subset of their data in memory, relying on persisted data to load in the rest as needed.
-This is planned for "ForestIndex", and is an important requirement that the design for indexes must support to allow documents to scale beyond memory.
+Indexes are updated on document edits and persisted in Fluid summaries. Indexes that only have performance implications (no effect on op application) and cache nothing persistently are treated as a special case of persisted indexes with empty persisted data. Indexes may also keep only a subset of their data in memory, loading the rest from persistence on demand — this is planned for `ForestIndex` and is a key scalability requirement.
 
 ## Branches
 
-A branch is a timeline of a document's state as viewed from a particular user.
-This is the same concept as [branches in version control](<https://en.wikipedia.org/wiki/Branching_(version_control)>).
-From the perspective of a single Fluid client, there can be several relevant branches:
+A branch is a timeline of document state as viewed from a particular user — the same concept as [version control branches](https://en.wikipedia.org/wiki/Branching_(version_control)).
 
--   The sequenced branch: this includes everything that has been sequenced.
-    It is append-only (never rebased or reset) and consists of all the ops from all the clients, rebased into the canonical order selected by the Fluid ordering service.
+From a single Fluid client's perspective:
 
-    When compared to common `git` workflows, this closely resembles a `main` branch which is only updated via pull requests into an upstream repository.
+- **Sequenced branch:** Everything sequenced so far. Append-only (never rebased or reset); all ops from all clients, ordered by the Fluid ordering service. Analogous to a `main` branch updated only via pull requests.
 
--   The local branch: the sequenced branch, plus any local edits (ops for them have not yet been sequenced).
+- **Local branch:** The sequenced branch plus unsequenced local edits. Analogous to a local feature branch, rebased onto `main` as each new commit is merged.
 
-    In our `git` metaphor this is a feature branch in the local repository.
-    Every time `main` changes, the feature branch is rebased onto the new state of `main` by making pull requests one
-    commit at a time which are always merged using rebase.
+- **Working copy:** The local branch plus the in-progress transaction state. If async transactions with snapshot isolation are supported, the branch point may not always be the latest local branch tip. Analogous to git's working copy (local branch = checked-out branch; in-progress transaction = uncommitted changes).
 
--   The working copy: the local branch, plus the current state of an in progress transaction.
-    If async transactions are supported with snapshot isolation, the version of the local branch that the transaction branches off from might not always be the latest.
+- **Remote branches:** Replicas of remote clients' local branches at the time each op was sent. Required for correct rebasing of remote edits into the sequenced branch. (Unlike git, where rebasing happens once upstream, all Fluid clients perform the rebase locally.)
 
-    In our `git` metaphor, this lines up with git's working copy, while the "local branch" is checked out.
-    The in progress transaction aligns with the uncommitted changes.
+- **Long-lived branches:** User-created branches that persist separately from the main branch for extended periods. Useful for experimentation, extended offline work (preserving history on merge), or user-controlled snapshots. Currently not supported; forward-looking designs should account for them.
 
--   Remote branches: branches which replicate what remote clients had in their local branches when an op was sent.
-    These are necessary for correctly rebasing remote edits into main.
+TODO: Diagrams showing branch timelines for multiple clients.
 
-    In our `git` metaphor this represents a local copy of a different remote's feature branch.
-    Since in Fluid all the clients do the rebase, but in `git` it happens once in the upstream repository,
-    such branches would generally not be needed if using `git`, but are necessary for our actual Fluid setup.
+## Branch-Index Interactions
 
--   Long lived branches: branches explicitly created by the user that can live separately from the "main" branch for long periods of time.
+Indexes may be needed at several points in the revision graph:
 
-    In our `git` metaphor this represents feature branches (eventually might be merged) or release branches (likely never merged).
-    They can be used to experiment with a copy of the document, work offline for extended periods while preserving history when merging,
-    or just as a way to have a user-controlled snapshot.
+- **Tip of working copy:** Needed by editing code to access schema and tree data. Additional indexes (e.g., identifier lookup, text search) are likely also desired here.
+- **Tip of local branch:** The version reflected in the application's views and APIs; must support reading, state interpretation, and transaction creation.
+- **Tip of sequenced branch:** Logical point for summarization (though local branch tip is equivalent on summary clients). Also the base for rebasing remote edits and the local branch.
+- **Tip of remote branches:** The state from which remote edits are interpreted and rebased. The op creator had index access at this state and could optionally include relevant index data to avoid recomputation on other clients.
+- **Along merge reconciliation paths:** If rebasing or squashing requires index access, indexes may be needed at intermediate points in the merge path.
+- **Historical states:** For inspecting old document versions, either via old index versions or by indexing history directly in current indexes.
+- **On long-lived branches:** If supported, long-lived branches may need their own indexes, including working copy and remote branch indexes for collaborative use.
 
-    Currently shared-tree does not use or support this type of branches, but forward looking designs should consider them.
+## Optimization Options
 
-TODO: diagrams showing branch diagram for a couple clients over time.
+Maintaining full in-memory indexes for all locations at all times would be prohibitively expensive. Mitigations include:
 
-## Branch Index Interactions
-
-There are several different use-cases for indexes which would necessitate access to them at different times and on different branches.
-
--   Tip of the "working copy" branch.
-
-    For example, editing code will likely need indexes for the working copy in order to provide access to schema and tree information while editing.
-    If there are additional indexes (ex: subtree lookup from identifier, or text search), these likely would also be desired at the top of the working copy branch.
-
--   Tip of the "local" branch.
-
-    This is the version typically reflected in the application's views (for example its user interface or exposed via APIs).
-    It needs to support reading and interpreting the state of the document, as well as creating transactions at that state.
-
--   Tip of the sequenced branch.
-
-    This is a logical branch to record the indexes for summarization, though the tip of the "local" branch could also be used since on summary clients they are the same.
-    Future optimizations to not duplicate state in the summary client might lead to wanting to explicitly summarize the tip of the sequenced branch instead.
-
-    This is also the state onto which edits are rebased (both remote edits, and the local branch).
-    Doing this could make use of indexes at this point.
-
--   Tip of remote branches.
-
-    This is the state in which remote edits are interpreted and rebased from.
-    Since the creators of the ops had access to indexes at this state (via their local branch),
-    they could optionally include relevant information from those indexes to avoid it having to be recovered when processed/rebased on other client.
-
--   Along merge reconciliation paths.
-
-    If change rebasing or squashing requires access to indexes, they could be required anywhere along the merge reconciliation paths.
-
--   Other historical states.
-
-    Inspecting old document versions could make use of old versions of indexes.
-    Another approach to this would be to index history directly, so the current versions of indexes contain the needed historical information.
-
--   On long lived branches.
-
-    Just like the main branch, if long lived branches are supported, they may needed indexes.
-    They may even need indexes for their corresponding working copies and remote branches if they are used collaboratively.
-
-## Optimizations Options
-
-Maintaining full in-memory versions of all indexes for all these locations all the time would be very expensive performance wise.
-
-This can be mitigated in several different ways:
-
--   Maintain indexes only at places in the revision graph that require them.
-
--   Use indexes when creating edits (tip of the "working copy" branch) but not when peer rebasing them.
-    For indexes using this approach this prevents remote edits from requiring indexes to be rebased.
-    This means that synchronously rebasing remote edits does not require index access, so index access can be async.
-    This also (when combined with the above) avoids maintaining most of the possible versions of an index.
-
--   "Virtualized" indexes which lazily load data from blobs as needed, keeping only a portion of the data in memory at a given time.
-    This can make some accesses async, and thus works well with the above.
-
--   Delta indexes: implements indexes as deltas to another version of the index which can be used similarly to a write back cache or the tiering in level db.
-    This is a nice design pattern to handle the persisted vs in memory combination, but also generalizes.
-    This can be used to keep multiple in memory versions for nearby locations in the revision graph (ex: persisted, sequenced, local and per transaction).
-
--   Copy on Write: Copy on write can also be used to optimize maintaining multiple indexes by sharing the parts that are the same.
-
-Note that this list is not complete, but it is sufficient to motivate the decisions below.
+- **Selective maintenance:** Keep indexes only at revision graph locations that require them.
+- **Avoid indexes during peer rebasing:** Only use indexes when creating edits (working copy tip), not when rebasing peer edits. This makes remote-edit rebasing synchronous without index access, enabling async index access patterns.
+- **Virtualized indexes:** Lazily load data from blobs on demand, keeping only a portion in memory at a time. Pairs well with async index access.
+- **Delta indexes:** Implement indexes as deltas to another version — like a write-back cache or LevelDB tiering. Efficient for maintaining multiple in-memory versions at nearby revision graph locations (e.g., persisted, sequenced, local, per-transaction).
+- **Copy-on-write:** Share unchanged parts across multiple in-memory index versions.
 
 ## A General Approach
 
-Depending on the specific index, it might be needed at different places, and thus have very different usage patterns and optimization requirements.
+Different indexes have different usage patterns and optimization requirements. To keep options open, SharedTree's index abstraction exposes both branches and revisions to index implementations, leaving each implementation free to choose mutation vs. copy-on-write and whether to virtualize. An `IndexView` concept provides access to index state at a specific revision or branch.
 
-To keep as many options open as possible, shared tree's index abstraction can expose both the notion of branches and revisions to the index abstraction.
-This complicates the index abstraction a bit, but leaves the index implementation to pick if mutation or copy on write is a good approach, and if it should do virtualization.
-We then introduce the concept of an "IndexView", which accesses the index's information about a specific revision or branch.
+Helper code for both copy-on-write and mutation-based approaches (likely involving deltas) can reduce duplication across index implementations.
 
-To make implementations of indexes simpler, helper code could be authored for both copy on write and mutation based index approaches (likely involving deltas as well) so this logic does not need to be implemented multiple times.
+To avoid multiple data structures tracking branch relationships, `Rebaser` can be generalized into a `RevisionManager` that handles this once; indexes use it to track, notify, and look up revision-related information. Since indexes can depend on other indexes (e.g., `ForestIndex` depends on `SchemaIndex`), the `RevisionManager` itself can be an index, allowing its state to be summarized via the same path as all other indexes.
 
-To avoid having multiple data-structures tracking how different branches relate to each-other, we can generalize `Rebaser` into a `RevisionManager` that can handle this once, and indexes can use it to track/notify/lookup anything needed related to that.
-
-Since indexes can depend on other indexes (like how ForestIndex depends on the SchemaIndex), the RevisionManager can be an index.
-This would remove the need to special case how it stores its state in summaries: it could do so just like all the other indexes.
-
-This approach leaves most of the design tradeoffs inside the index implementations, meaning that changing them will not impact the system architecture.
-This also means that different indexes (or even the same indexes in different apps) can take different approaches, allowing for more specialized optimizations and incremental API migrations when needed.
+This approach keeps most design trade-offs inside individual index implementations, so changing them does not affect system architecture. Different indexes (or the same index in different apps) can use different strategies, enabling specialized optimizations and incremental API migrations.

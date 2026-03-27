@@ -53,22 +53,17 @@ API documentation for **@fluidframework/tree** is available at <https://fluidfra
 
 ## Status
 
-Notable considerations that users should be aware of:
+Notable considerations:
 
--   The persisted format is stable: documents created with released versions 2.0.0 or greater of this package are fully supported long term.
--   All range changes are currently atomized.
-    This means that, when inserting/removing/moving multiple contiguous nodes the edit is split up into separate single node edits.
-    This can impact the merge behavior of these edits, as well as the performance of large array edits.
--   Some documentation (such as this readme and [the roadmap](docs/roadmap.md)) are out of date.
-    The [API documentation](https://fluidframework.com/docs/api/v2/tree) which is derived from the documentation comments in the source code should be more up to date.
+-   The persisted format is stable: documents created with released versions 2.0.0+ are fully supported long term.
+-   All range changes are currently atomized: inserting/removing/moving multiple contiguous nodes is split into separate single-node edits. This affects merge behavior and performance for large array edits.
+-   Some documentation (including this readme and [the roadmap](docs/roadmap.md)) may be out of date. The [API documentation](https://fluidframework.com/docs/api/v2/tree) derived from source code comments is more current.
 
 More details on the development status of various features can be found in the [roadmap](docs/roadmap.md).
 
 ## Motivation
 
-There are a lot of different factors motivating the creation of this Tree DDS.
-A wide variety of possible consumers (across several companies) have overlapping feature requirements
-which seem like they can best be met by collaborating on a single feature rich tree implementation powered by Fluid.
+Many consumers across several companies have overlapping requirements that are best met by a shared, feature-rich tree DDS.
 The current feature focus is on:
 
 -   Semantics:
@@ -92,46 +87,32 @@ The current feature focus is on:
 
 ## What's missing from existing DDSes?
 
-`directory` and `map` can not provide merge resolution that guarantees well-formedness of trees while supporting the desired editing APIs (like subsequence move),
-and are missing (and cannot be practically extended to have) efficient ways to handle large data or schema.
+`directory` and `map` cannot guarantee tree well-formedness with the desired editing APIs (e.g., subsequence move), and cannot be practically extended to handle large data or schema efficiently.
 
-`sequence` does not capture the hierarchy or schema, and also does not handle partial views.
-Additionally its actual merge resolution leaves some things to be desired in some cases which `tree` aims to improve on.
+`sequence` does not capture hierarchy or schema, does not handle partial views, and has merge resolution shortcomings that `tree` aims to improve.
 
-`experimental/tree` does not have a built in schema system reducing the data available to make semantically high quality merges.
-It also does merge resolution in a way that requires having the whole tree in memory due to it being based entirely on node identifiers
-(including constraints within transactions that can't be verified without reading large parts of the tree).
+`experimental/tree` lacks a built-in schema system, reducing data available for high-quality merges. Its merge resolution requires the whole tree in memory because it is based entirely on node identifiers (including transaction constraints that require reading large tree portions).
 
-`experimental/PropertyDDS` currently does not have as high quality merge logic as desired, currently not even supporting efficient moves.
-Much of what is desired is theoretically possible as additional feature work on `PropertyDDS`,
-but it was decided that it makes more sense to build up this more featureful DDS from scratch leveraging the learnings from `PropertyDDS` and `experimental/tree`.
+`experimental/PropertyDDS` has lower-quality merge logic (no efficient moves). While improvements are theoretically possible, it was decided to build this DDS from scratch, incorporating lessons from both `PropertyDDS` and `experimental/tree`.
 
-## Why not a tree made out of existing DDS implementations and how this relates to the Fluid Framework itself?
+## Why not a tree composed of existing DDSes?
 
-Currently existing DDS implementations can not support cross DDS transactions.
-For example, moving part of a sequence from one sequence DDS to another cannot be done transactionally, meaning if the source of the move conflicts, the destination half can't be updated or aborted if it's in a different DDS.
-Cross DDS moves also currently can't be as efficient as moves within a single DDS, and there isn't a good way to do cross DDS history or branching without major framework changes.
-There are also some significant per DDS performance and storage costs that make this approach much more costly than using a single DDS.
+Existing DDSes cannot support cross-DDS transactions: moving a sequence item from one DDS to another cannot be done atomically, so if the source conflicts, the destination cannot be updated or aborted. Cross-DDS moves are also less efficient than intra-DDS moves, and cross-DDS history or branching would require major framework changes. Per-DDS performance and storage overhead also makes a multi-DDS approach significantly more expensive.
 
-One way to think about this new tree DDS is to try and mix some of the Fluid-Framework features (like the ability to view a subset of the data) with features from DDSes (ex: lower overhead per item, efficient moves of sub-sequences, transactions).
-If this effort is successful, it might reveal some improved abstractions for modularizing hierarchical collaborative data-structures (perhaps "field kinds"),
-which could make their way back into the framework, enabling some features specific to this tree (ex: history, branching, transactional moves, reduced overhead) to be framework features instead.
+This tree DDS can be thought of as combining Fluid Framework features (e.g., partial-view support) with DDS features (e.g., low per-item overhead, efficient sub-sequence moves, transactions). If successful, it may surface improved abstractions for hierarchical collaborative data structures (e.g., "field kinds") that could eventually move into the framework itself — making history, branching, transactional moves, and reduced overhead framework-level features.
 
-From this perspective, this tree serves as a proof of concept for abstractions and features which could benefit the framework, but are easier to implement within a DDS initially.
-This tree serves to get these feature into the hands of users much faster than could be done at the framework level.
+From this perspective, `tree` is a proof of concept for abstractions that benefit from initial DDS-level implementation, delivering these capabilities to users faster than a framework-level approach would allow.
 
 ## Recommended Developer Workflow
 
-This package can be developed using any of the [regular workflows for working on Fluid Framework](../../../README.md) and/or its Client release group of packages, but for work only touching the tree package, there is an optional workflow that might be more ergonomic:
+This package supports the [standard Fluid Framework workflows](../../../README.md). For work limited to this package, there is a more streamlined option:
 
 -   Follow the [Setup and Building](../../../README.md#setup-and-building) instructions.
--   Open the [.vscode/Tree.code-workspace](.vscode/Tree.code-workspace) in VS Code.
-    This will recommend a test runner extension, which should be installed.
--   Build the the tree package as normal (for run example: `pnpm i && pnpm run build` in the `tree` directory).
--   After editing the tree project, run `pnpm run build` (still in the `tree`) directory.
--   Run and debug tests using the "Testing" side panel in VS Code, or using the inline `Run | Debug` buttons which should show up above tests in the source:
-    both of these are provided by the mocha testing extension thats recommended by the workspace.
-    Note that this does not build the tests, so always be sure to build first.
+-   Open [.vscode/Tree.code-workspace](.vscode/Tree.code-workspace) in VS Code and install the recommended test runner extension.
+-   Build with `pnpm i && pnpm run build` in the `tree` directory.
+-   After edits, run `pnpm run build` again.
+-   Run and debug tests via the "Testing" panel in VS Code or the inline `Run | Debug` buttons (provided by the mocha extension).
+    Note: the buttons do not trigger a build — always build first.
 
 ## Frequently asked questions
 
@@ -148,36 +129,33 @@ function set(node: Test) {
 }
 ```
 
-This is due to [a limitation of the TypeScript language](https://github.com/microsoft/TypeScript/issues/43826) which makes it impossible for tree to allow that to type-check while keeping the strong typing on the getters for reading data.
+This is a [TypeScript limitation](https://github.com/microsoft/TypeScript/issues/43826) that makes it impossible to allow insertable content on setters while preserving strong getter types.
 
-To workaround this, create an unhydrated node:
-
-``` typescript
-node.data = new Empty({}); // The unhydrated node's type matches the type returned by the getter, and thus is compatible with the setter
-```
-
-Insertable content can still be used in other places, like when nested in other insertable content, in ArrayNode editing methods, and when initializing views.
+The workaround is to construct an unhydrated node explicitly:
 
 ``` typescript
-// The empty node can be implicitly constructed from `{}` here, since this context allows insertable content, not just nodes.
-const node = new Test({ data: {} });
+node.data = new Empty({}); // unhydrated node type matches the getter return type
 ```
 
-See the documentation for [TreeNode](https://fluidframework.com/docs/api/fluid-framework/treenode-class#treenode-remarks) for some notes about explicit vs implicit node construction.
+Insertable content still works in other contexts: nested inside other insertable content, in `ArrayNode` editing methods, and when initializing views:
+
+``` typescript
+const node = new Test({ data: {} }); // {} is implicitly constructed as Empty here
+```
+
+See [TreeNode remarks](https://fluidframework.com/docs/api/fluid-framework/treenode-class#treenode-remarks) for notes on explicit vs implicit node construction.
 
 ### Why is the only type TypeScript will let me provide as content for my field `undefined`?
 
-An optional field allows `undefined` or whatever types the [`AllowedTypes`](https://fluidframework.com/docs/api/fluid-framework/allowedtypes-typealias) for the field permit.
-If the allowed types are getting reduced to `never` only `undefined` will remain.
-See below for why this might happen.
+An optional field allows `undefined` or whatever [`AllowedTypes`](https://fluidframework.com/docs/api/fluid-framework/allowedtypes-typealias) the field permits.
+If the allowed types reduce to `never`, only `undefined` remains.
+See the next question for why this can happen.
 
 ### Why is my insertable content getting typed as `never`?
 
-This is a common problem when working with [Input](https://fluidframework.com/docs/api/fluid-framework/input-typealias) types due to the contravariance (see the linked documentation for details).
-
-This is most commonly a symptom of the schema having insufficiently specific types for the schema.
-This most commonly happens when declaring a constant for part of a schema which is then used later when building the full schema.
-For example it fails if you do:
+This commonly occurs with [Input](https://fluidframework.com/docs/api/fluid-framework/input-typealias) types due to contravariance (see the linked docs).
+The usual cause is insufficiently specific types when declaring a schema constant used later in the full schema.
+For example:
 
 ```typescript
 const itemTypes = [ItemA, ItemB]; // BAD: use `as const` to fix.
@@ -185,7 +163,7 @@ class Holder extends schemaFactory.object("Holder", { item: itemTypes }) {}
 const holder = new Holder({ item: new ItemA({ a: 42 }) }); // Type 'ItemA' is not assignable to type 'never'.ts(2322)
 ```
 
-This can be fixed by capturing a more specific type for the schema:
+Fix by using `as const` to capture a more specific type:
 
 ```typescript
 const itemTypes = [ItemA, ItemB] as const; // Fixed
@@ -196,9 +174,7 @@ const holder = new Holder({ item: new ItemA({ a: 42 }) });
 ## Architecture
 
 This section covers the internal structure of the Tree DDS.
-In this section the user of this package is called "the application".
-"The application" is full of "application code", meaning code which can be specific to particular schema and use-cases.
-This typically means the client side "business logic" or "view" part of some graphical web application, but it could also mean something headless like a service.
+Throughout, "the application" refers to the consumer of this package — typically client-side business logic or a view layer, but possibly a headless service.
 
 ### Ownership and Lifetimes
 
@@ -223,28 +199,27 @@ graph TD;
     end
 ```
 
-`tree` is a DDS, and therefore it stores its persisted data in a Fluid Container, and is also owned by that same container.
-When nothing in that container references the DDS anymore, it may get garbage collected by the Fluid GC.
+`tree` is a DDS: it stores persisted data in a Fluid Container and is owned by that container.
+When no container references remain, it may be garbage collected.
 
-The tree DDS itself, or more specifically [`shared-tree-core`](./src/shared-tree-core/README.md) is composed of a collection of indexes (just like a database) which contribute data which get persisted as part of the summary in the container.
-`shared-tree-core` owns these databases, and is responsible for populating them from summaries and updating them when summarizing.
+[`shared-tree-core`](./src/shared-tree-core/README.md) is composed of a collection of indexes (similar to a database), whose data is persisted as part of the container summary.
+`shared-tree-core` owns these indexes and is responsible for populating them from summaries and updating them during summarization.
 
-See [indexes and branches](./docs/main/indexes-and-branches.md) for details on how this works with branches.
+See [indexes and branches](./docs/main/indexes-and-branches.md) for details on how this interacts with branches.
 
-When applications want access to the `tree`'s data, they do so through an [`TreeView`](./src/simple-tree/tree.ts) which abstracts the indexes into nice application facing APIs based on the [`view-schema`](./src/core/schema-view/README.md).
-Views may also have state from the application, including:
+Applications access tree data through a [`TreeView`](./src/simple-tree/tree.ts), which exposes application-facing APIs built on the [`view-schema`](./src/core/schema-view/README.md).
+Views may also hold application state including:
 
 -   [`view-schema`](./src/core/schema-view/README.md)
 -   adapters for out-of-schema data (TODO)
--   request or hints for what subsets of the tree to keep in memory (TODO)
+-   hints for which subtrees to keep in memory (TODO)
 -   pending transactions
--   registrations for application callbacks / events
+-   application callback / event registrations
 
-Since views subscribe to events from `shared-tree`, explicitly disposing any created ones is required to avoid leaks.
+Views subscribe to events from `shared-tree`, so they must be explicitly disposed to avoid leaks.
 
 Transactions are created by `Tree.runTransaction` and are currently synchronous.
-Support for asynchronous transactions, with the application managing the lifetime and ensuring it does not exceed the lifetime of the view,
-could be added in the future.
+Async transaction support (with application-managed lifetimes bounded by the view lifetime) may be added in the future.
 
 ### Data Flow
 
@@ -262,41 +237,25 @@ flowchart LR;
 ```
 
 [`shared-tree`](./src/shared-tree/) configures [`shared-tree-core`](./src/shared-tree-core/README.md) with a set of indexes.
-`shared-tree-core` downloads the summary data from the Fluid Container, feeding the summary data (and any future edits) into the indexes.
-`shared-tree` then constructs the default view.
-The application using the `shared-tree` can get the view from which it can read data (which the view internally gets from the indexes).
-For any given part of the application this will typically follow one of two patterns:
+`shared-tree-core` downloads summary data from the Fluid Container and feeds it (and subsequent edits) into the indexes.
+`shared-tree` then constructs the default view, from which the application reads data.
 
--   read the tree data as needed to create the view.
-    Register invalidation call backs for when the observed parts of the tree change.
-    When invalidated, reconstruct the invalidated parts of the view by rereading the tree.
--   read the tree data as needed to create the view.
-    Register delta callbacks for when the observed parts of the tree change.
-    When a delta is received, update the view in place according to the delta.
+Applications typically use one of two patterns:
 
-TODO: Eventually these two approaches should be able to be mixed and matched for different parts of the application as desired, receiving scoped deltas.
-For now deltas are global.
+-   **Invalidation**: Read tree data to build the view. Register invalidation callbacks for observed parts. On invalidation, re-read the tree to reconstruct affected parts.
+-   **Delta**: Read tree data to build the view. Register delta callbacks for observed parts. On delta, update the view in place.
 
-Note that the first pattern is implemented using the second.
-It works by storing the tree data in a [`forest`](./src/core/forest/README.md) which updates itself using deltas.
-When an application chooses to use the second pattern,
-it can be thought of as opting into a specialized application (or domain) specific tree representation.
-From that perspective the first pattern amounts to using the platform-provided general purpose tree representation:
-this should usually be easier, but may incur some performance overhead in specific cases.
+<!-- TODO: Eventually these patterns should be mixable for different subtrees, with scoped deltas. For now deltas are global. -->
 
-When views want to hold onto part of the tree (for the first pattern),
-they do so with "anchors" which have well defined behavior across edits.
+The first pattern is implemented using the second: tree data is stored in a [`forest`](./src/core/forest/README.md) that updates itself via deltas. The second pattern opts into a domain-specific tree representation; the first uses the platform-provided general-purpose representation, which is simpler but may have some performance overhead.
 
-TODO: Note that as some point the application will want their [`view-schema`](./src/core/schema-view/README.md) applied to the tree from the view.
-The system for doing this is called "schematize" and is currently not implemented.
-When it is more designed, some details for how it works belong in this section (as well as the section below).
+Views hold references to parts of the tree using "anchors", which have well-defined behavior across edits.
 
 ### Editing
 
-Edit related data flow with solid arrows.
-Key view related updates made in response with dotted arrows.
+Solid arrows show edit-related data flow; dotted arrows show view updates in response.
 
-This shows editing during a transaction:
+Editing during a transaction:
 
 ```mermaid
 flowchart RL
@@ -311,28 +270,18 @@ flowchart RL
     forest-."invalidation".->command
 ```
 
-The application can use their view to locate places they want to edit.
-The application passes a "command" to the view which create a transaction that runs the command.
-This "command" can interactively edit the tree.
-Internally the transaction implements these edits by creating changes.
-Each change is processed in two ways:
+The application uses its view to locate edit targets, then passes a "command" to the view, which creates a transaction to run it.
+The command can interactively edit the tree. Internally, the transaction implements edits by creating changes, each processed two ways:
 
--   the change is converted to a delta which is applied to the forest and any existing anchors allowing the application to read the updated tree afterwards.
--   the changes applied to the `EditBuilder` are accumulated and used to create/encode the actual edit to send to Fluid.
+-   The change is converted to a delta applied to the forest and any anchors, letting the application read the updated tree immediately.
+-   The change is accumulated in `EditBuilder` to build the final edit sent to Fluid.
 
-Once the command ends, the transaction is rolled back leaving the forest in a clean state.
-Then if the command did not error, a `changeset` is created from the changes applied to the `EditBuilder`, which is encoded into a Fluid Op.
-The view then rebases the op if any Ops came in while the transaction was pending (only possible for async transactions or if the view was behind due to it being async for some reason).
-Finally the view sends the op to `shared-tree-core` which submits it to Fluid.
-This submission results in the op becoming a local op, which `shared-tree-core` creates a delta for.
-This delta goes to the indexes, resulting in the ForestIndex and thus views getting updated,
-as well as anything else subscribing to deltas.
+When the command ends, the transaction rolls back to leave the forest clean.
+If the command succeeded, a `changeset` is built from `EditBuilder` and encoded as a Fluid Op.
+The view rebases the op if other ops arrived during the (async) transaction, then sends it to `shared-tree-core`, which submits it to Fluid.
+This creates a local op and a corresponding delta, which flows to the indexes, updating `ForestIndex` and any delta subscribers.
 
-This shows completion of a transaction.
-Not shown are the rollback or changes to forest (and the resulting invalidation) and AnchorSet,
-then the updating of them with the final version of the edit.
-In the common case this can be skipped (since they cancel out).
-Also not shown is the (also usually unneeded) step of rebasing the changeset before storing it and sending it to the service.
+Transaction completion diagram (rollback, forest/AnchorSet updates, and the usually-skipped changeset rebase step are omitted for clarity):
 
 ```mermaid
 flowchart LR
@@ -348,8 +297,7 @@ flowchart LR
     service--"Sequenced Op"-->log["Op Log"]
 ```
 
-When the op gets sequenced, `shared-tree-core` receives it back from the ordering service,
-rebases it as needed, and sends another delta to the indexes.
+When the op is sequenced, `shared-tree-core` receives it back, rebases it as needed, and sends another delta to the indexes:
 
 ```mermaid
 graph LR;
@@ -369,59 +317,25 @@ graph LR;
 
 ### Schema Evolvability
 
-Over time, application authors may want to change the schema for their documents.
-For example, they might want to add support for a new application feature or represent existing content in some new way.
+Application authors often need to change their schema — to add features or restructure content. Before doing so, they must account for compatibility constraints: there is no way to guarantee all open documents use the new schema, or that all collaborating clients run the same code version. Two clients with different schemas attempting to collaborate can cause problems.
 
-Before doing so, application authors must consider compatibility constraints within their ecosystem.
-Most ecosystems don't have a way to ensure all documents an application may open are using the new schema or even that all users within a collaborative session are using the same code version.
-This can be problematic when two clients using code versions with different document schema attempt to collaborate.
+Applications must therefore plan policies for which document versions their code supports.
 
-As a result, applications must be forward-thinking about policies around when their code supports working with some particular document.
-
-See [Schema Evolution](./docs/user-facing/schema-evolution.md) for a comprehensive treatment of this problem.
+See [Schema Evolution](./docs/user-facing/schema-evolution.md) for a comprehensive treatment.
 
 ### Dependencies
 
-`@fluidframework/tree` depends on the Fluid runtime (various packages in `@fluidframework/*`)
-and will be depended on directly by application using it (though at that time it will be moved out of `@fluid-experimental`).
-`@fluidframework/tree` is also complex,
-so its implementation is broken up into several parts which have carefully controlled dependencies to help ensure the codebase is maintainable.
-The goal of this internal structuring is to make evolution and maintenance easy.
-Some of the principles used to guide this are:
+`@fluidframework/tree` depends on the Fluid runtime (`@fluidframework/*`) and is consumed directly by applications.
+Its implementation is split into several parts with carefully controlled dependencies to keep the codebase maintainable.
+The guiding principles are:
 
--   Avoid cyclic dependencies:
+-   **Avoid cyclic dependencies**: Cycles make incremental learning and replacement harder, and can cause runtime initialization issues.
 
-    Cyclic dependencies can make it hard to learn a codebase incrementally, as well as make it hard to update or replace parts of the codebase incrementally.
-    Additionally they can cause runtime issues with initialization.
+-   **Minimize coupling**: Reduce the number and complexity of dependency graph edges — e.g., by making components generic rather than depending on concrete types, or merging tightly coupled components.
 
--   Minimize coupling:
+-   **Reduce transitive dependencies**: Keep each component's total dependency count small, at both the module and object level. In particular, avoid dependencies on stateful systems from code with complex conditional logic. For example, in [rebase](./src/core/rebase/README.md), `Rebaser` (stateful) is not depended on by the rebase policy. Instead, policy lives behind the `ChangeRebaser` interface as pure functions — making it easy to test in isolation. If policy lived in `Rebaser` subclasses, it would be much harder to test.
 
-    Reducing the number and complexity of edges in the dependency graph.
-    This often involves approaches like making a component generic instead of depending on a concrete type directly,
-    or combining related components that have a lot of coupling.
-
--   Reducing transitive dependencies:
-
-    Try to keep the total number of dependencies of a given component small when possible.
-    This applies both at the module level, but also for the actual object defined by those modules.
-    One particular kind of dependency we make a particular effort to avoid are dependencies on stateful systems from code that has complex conditional logic.
-    One example of this is in [rebase](./src/core/rebase/README.md) where we ensured that the stateful system, `Rebaser` is not depended on by the actual change specific rebase policy.
-    Instead the actual replace policy logic for changes is behind the `ChangeRebaser` interface, which does not depend on `Rebaser` and exposes the policy as pure functions (and thus is stateless).
-    This is important for testability, since complex conditional logic (like `ChangeRebaser` implementations) require extensive unit testing,
-    which is very difficult (and often slow) for stateful systems and systems with lots of dependencies.
-    If we instead took the pattern of putting the change rebasing policy in `Rebaser` subclasses,
-    this would violate this guiding principle and result in much harder to isolate and test policy logic.
-
-    Another aspect of reducing transitive dependencies is reducing the required dependencies for particular scenarios.
-    This means factoring out code that is not always required (such as support for extra features and optimizations) such that they can be omitted when not needed.
-    `shared-tree-core` is an excellent example of this: it can be run with no indexes, and trivial a change family allowing it to have very few required dependencies.
-    This often takes the form of either depending on interfaces (which can have their implementation swapped out or mocked), like [`ChangeFamily`](./src/core/change-family/README.md), or collection functionality in a registry, like we do for `FieldKinds` and `shared-tree-core`'s indexes.
-    Dependency injection is one example of a useful pattern for reducing transitive dependencies.
-    In addition to simplifying reasoning about the system (less total to think about for a given scenario) and simplifying testing,
-    this approach also makes the lifecycle for new features easier to manage, since they can be fully implemented and tested without having to modify code outside of themselves.
-    This makes pre-releases, stabilization and eventual deprecation of these features much easier, and even makes publishing them from separate packages possible if it ends up needing an even more separated lifecycle.
-
-    Additionally, this architectural approach can lead to smaller applications by not pulling in unneeded functionality.
+    Reducing required dependencies for specific scenarios also enables tree-shaking and optional features. `shared-tree-core` exemplifies this: it runs with no indexes and a trivial change family, giving it very few required dependencies. Interfaces (e.g., [`ChangeFamily`](./src/core/change-family/README.md)) and registries (e.g., `FieldKinds`, `shared-tree-core`'s indexes) support this via dependency injection. This simplifies reasoning, improves testability, and makes feature lifecycle management (pre-release, stabilization, deprecation, separate package extraction) straightforward.
 
 These approaches have led to a dependency structure that looks roughly like the diagram below.
 In this diagram, some dependency arrows for dependencies which are already included transitively are omitted.
@@ -476,14 +390,14 @@ flowchart
 
 ## Open Design Questions
 
-The design issues here all impact the architectural role of top-level modules in this package in a way that when fixed will likely require changes to the architectural details covered above.
-Smaller scoped issues which will not impact the overall architecture should be documented in more localized locations.
+The issues below affect the architectural role of top-level modules and will likely require changes to the architecture described above when resolved.
+Smaller, localized issues should be documented closer to the relevant code.
 
 ### How should specialized sub-tree handling compose?
 
-Applications should have a domain model that can mix tree nodes with custom implementations as needed.
-Custom implementations should probably be able to be projections of flex trees, the forest content (via cursors), and updated via either regeneration from the input, or updated by a delta.
-This is important for performance/scalability and might be how we do virtualization (maybe subtrees that aren't downloaded are just one custom representation?).
+Applications need a domain model that can mix tree nodes with custom implementations.
+Custom implementations should be projectable from flex trees or forest content (via cursors), and updatable via either regeneration or delta.
+This is important for performance and scalability, and may also be the mechanism for virtualization (e.g., un-downloaded subtrees as a custom representation).
 
 <!-- AUTO-GENERATED-CONTENT:START (README_FOOTER) -->
 
