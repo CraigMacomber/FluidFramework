@@ -39,14 +39,14 @@ importers:
         specifier: ^9.39.0
         version: 9.39.2
       '@fluid-tools/build-cli':
-        specifier: ^0.63.0
-        version: 0.63.0(@types/node@22.5.4)(encoding@0.1.13)
+        specifier: ^0.64.0
+        version: 0.64.0(@types/node@22.5.4)(encoding@0.1.13)
       '@fluidframework/build-common':
         specifier: ^2.0.3
         version: 2.0.3
       '@fluidframework/build-tools':
-        specifier: ^0.63.0
-        version: 0.63.0(@types/node@22.5.4)
+        specifier: ^0.64.0
+        version: 0.64.0(@types/node@22.5.4)
       '@fluidframework/protocol-definitions-previous':
         specifier: npm:@fluidframework/protocol-definitions@3.2.0
         version: '@fluidframework/protocol-definitions@3.2.0'
@@ -163,17 +163,17 @@ packages:
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@fluid-tools/build-cli@0.63.0':
-    resolution: {integrity: sha512-uojCOPIEhjtGCLd69RdQAvfJ55scFgyXaltTwoD19z6Q3JTn4FRnLfl2t00sAXHB5rCLoff6fDeIJ7blRElOpg==}
+  '@fluid-tools/build-cli@0.64.0':
+    resolution: {integrity: sha512-MqP8xAATWnvpracHWV2Pbu7zH/jK2Jhcu/tO9UeQfI0B+6d+yROMVMjxJZUZ/uCqEn/1AfP0TCwQwTJMyO4xsA==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
-  '@fluid-tools/build-infrastructure@0.63.0':
-    resolution: {integrity: sha512-YuOvII++mJ18PVTW8A1phqvk/6/NgKJ6n940exaXBgKiXqcumLWDKW5Bmlr0w9FK8+iYuvmjVcDJCKMof6CUlg==}
+  '@fluid-tools/build-infrastructure@0.64.0':
+    resolution: {integrity: sha512-YPrMHoLYtYsYkEOFWnC50qOZwnEQv/BamFyjK28BevkQVq8p9FIHKo/rNS87rdyXEqneGGTBNctCMdsUMDgAMw==}
     hasBin: true
 
-  '@fluid-tools/version-tools@0.63.0':
-    resolution: {integrity: sha512-XckRsHRPKunrcD4CtbqpHFbCrH/kIbRuyohSEckeTh2GVxaZW4eUj3NxyaKCn/hUq9qtGvhDhBbbfGlA/G2HiQ==}
+  '@fluid-tools/version-tools@0.64.0':
+    resolution: {integrity: sha512-PUak4Sh2k8VHZzGPb9YIY689wapXEyPT9pLFPCIbEDXvITQcI3V6eWbqDfcySEovkp83G/uxXZkBIrp/BE9ceA==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -181,13 +181,13 @@ packages:
     resolution: {integrity: sha512-1LU/2uyCeMxf63z5rhFOFEBvFyBogZ7ZXwzXLxyBhSgq/fGiq8PLjBW7uX++r0LcVCdaWyopf7w060eJpANYdg==}
     hasBin: true
 
-  '@fluidframework/build-tools@0.63.0':
-    resolution: {integrity: sha512-Zpp1X6gETBXSIP9mkhBjKTpY1qkNINQIdEhYRoo6bvnZ50mvSncEOBgHlEhS3vQh3vYc2XwUT8sGuVMVJCKhoA==}
+  '@fluidframework/build-tools@0.64.0':
+    resolution: {integrity: sha512-/QziCGc2g5ehW5bs1idjh8LKcNYzD/VY1Dv3Bo3/pnnOBKIdJ0YtN7OSt11ojWbc7giipFr8q0Ly65p8jnpKrw==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
-  '@fluidframework/bundle-size-tools@0.63.0':
-    resolution: {integrity: sha512-S6KbzJVfVOYAMWwrWOf05K/JWdpVt7b+hAdP2g8vC89hvwUcGjwtxxHEsZYcPJx/aQ+xtTPcjiqNCqnSxiEu3Q==}
+  '@fluidframework/bundle-size-tools@0.64.0':
+    resolution: {integrity: sha512-v0K5mhaRP4FrGjmfhMPnloV2ny2D87qGzN/DeQby7nR+pkRcVEyeJQLh6l7cXLtj13JJO2Nn6Yg7x/KiNbIKZQ==}
 
   '@fluidframework/protocol-definitions@3.2.0':
     resolution: {integrity: sha512-xgcyMN4uF6dAp2/XYFSHvGFITIV7JbVt3itA+T0c71/lZjq/HU/a/ClPIxfl9AEN0RbtuR/1n5LP4FXSV9j0hA==}
@@ -3726,9 +3726,6 @@ packages:
   ts-morph@22.0.0:
     resolution: {integrity: sha512-M9MqFGZREyeb5fTl6gNHKZLqBQA0TjA1lea+CR48R8EBTDuWrNqW6ccC5QvjNR4s6wDumD3LTCjOFSp9iwlzaw==}
 
-  tslib@2.6.2:
-    resolution: {integrity: sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==}
-
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
@@ -4156,13 +4153,13 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@fluid-tools/build-cli@0.63.0(@types/node@22.5.4)(encoding@0.1.13)':
+  '@fluid-tools/build-cli@0.64.0(@types/node@22.5.4)(encoding@0.1.13)':
     dependencies:
       '@andrewbranch/untar.js': 1.0.3
-      '@fluid-tools/build-infrastructure': 0.63.0(@types/node@22.5.4)
-      '@fluid-tools/version-tools': 0.63.0(@types/node@22.5.4)
-      '@fluidframework/build-tools': 0.63.0(@types/node@22.5.4)
-      '@fluidframework/bundle-size-tools': 0.63.0
+      '@fluid-tools/build-infrastructure': 0.64.0(@types/node@22.5.4)
+      '@fluid-tools/version-tools': 0.64.0(@types/node@22.5.4)
+      '@fluidframework/build-tools': 0.64.0(@types/node@22.5.4)
+      '@fluidframework/bundle-size-tools': 0.64.0
       '@inquirer/prompts': 8.0.2(@types/node@22.5.4)
       '@microsoft/api-extractor': 7.55.2(@types/node@22.5.4)
       '@oclif/core': 4.8.0
@@ -4218,6 +4215,7 @@ snapshots:
       ts-morph: 22.0.0
       unist-util-visit: 5.0.0
       xml2js: 0.6.2
+      yaml: 2.8.2
     transitivePeerDependencies:
       - '@swc/core'
       - '@types/node'
@@ -4231,9 +4229,9 @@ snapshots:
       - utf-8-validate
       - webpack-cli
 
-  '@fluid-tools/build-infrastructure@0.63.0(@types/node@22.5.4)':
+  '@fluid-tools/build-infrastructure@0.64.0(@types/node@22.5.4)':
     dependencies:
-      '@fluid-tools/version-tools': 0.63.0(@types/node@22.5.4)
+      '@fluid-tools/version-tools': 0.64.0(@types/node@22.5.4)
       '@manypkg/get-packages': 2.2.2
       '@oclif/core': 4.8.0
       detect-indent: 6.1.0
@@ -4257,7 +4255,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@fluid-tools/version-tools@0.63.0(@types/node@22.5.4)':
+  '@fluid-tools/version-tools@0.64.0(@types/node@22.5.4)':
     dependencies:
       '@oclif/core': 4.8.0
       '@oclif/plugin-autocomplete': 3.2.39
@@ -4275,9 +4273,9 @@ snapshots:
 
   '@fluidframework/build-common@2.0.3': {}
 
-  '@fluidframework/build-tools@0.63.0(@types/node@22.5.4)':
+  '@fluidframework/build-tools@0.64.0(@types/node@22.5.4)':
     dependencies:
-      '@fluid-tools/version-tools': 0.63.0(@types/node@22.5.4)
+      '@fluid-tools/version-tools': 0.64.0(@types/node@22.5.4)
       '@manypkg/get-packages': 2.2.2
       '@types/glob': 7.2.0
       async: 3.2.6
@@ -4310,7 +4308,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@fluidframework/bundle-size-tools@0.63.0':
+  '@fluidframework/bundle-size-tools@0.64.0':
     dependencies:
       azure-devops-node-api: 11.2.0
       fflate: 0.8.2
@@ -5717,7 +5715,7 @@ snapshots:
   camel-case@4.1.2:
     dependencies:
       pascal-case: 3.1.2
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   camelcase@7.0.1: {}
 
@@ -5726,7 +5724,7 @@ snapshots:
   capital-case@1.0.4:
     dependencies:
       no-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.8.1
       upper-case-first: 2.0.2
 
   cardinal@2.1.1:
@@ -5762,7 +5760,7 @@ snapshots:
       path-case: 3.0.4
       sentence-case: 3.0.4
       snake-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   change-case@5.4.4: {}
 
@@ -5884,7 +5882,7 @@ snapshots:
   constant-case@3.0.4:
     dependencies:
       no-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.8.1
       upper-case: 2.0.2
 
   content-type@1.0.5: {}
@@ -6016,7 +6014,7 @@ snapshots:
   dot-case@3.0.4:
     dependencies:
       no-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   dot-prop@6.0.1:
     dependencies:
@@ -6506,7 +6504,7 @@ snapshots:
   header-case@2.0.4:
     dependencies:
       capital-case: 1.0.4
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   hosted-git-info@2.8.9: {}
 
@@ -6935,7 +6933,7 @@ snapshots:
 
   lower-case@2.0.2:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   lowercase-keys@3.0.0: {}
 
@@ -7453,7 +7451,7 @@ snapshots:
   no-case@3.0.4:
     dependencies:
       lower-case: 2.0.2
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   node-cleanup@2.1.2: {}
 
@@ -7740,7 +7738,7 @@ snapshots:
   param-case@3.0.4:
     dependencies:
       dot-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   parent-module@1.0.1:
     dependencies:
@@ -7769,7 +7767,7 @@ snapshots:
   pascal-case@3.1.2:
     dependencies:
       no-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   patch-console@2.0.0: {}
 
@@ -7778,7 +7776,7 @@ snapshots:
   path-case@3.0.4:
     dependencies:
       dot-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   path-exists@4.0.0: {}
 
@@ -8116,7 +8114,7 @@ snapshots:
   sentence-case@3.0.4:
     dependencies:
       no-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.8.1
       upper-case-first: 2.0.2
 
   serialize-javascript@7.0.4: {}
@@ -8210,7 +8208,7 @@ snapshots:
   snake-case@3.0.4:
     dependencies:
       dot-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   socks-proxy-agent@7.0.0:
     dependencies:
@@ -8441,8 +8439,6 @@ snapshots:
       '@ts-morph/common': 0.23.0
       code-block-writer: 13.0.1
 
-  tslib@2.6.2: {}
-
   tslib@2.8.1: {}
 
   tuf-js@1.1.5:
@@ -8597,11 +8593,11 @@ snapshots:
 
   upper-case-first@2.0.2:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   upper-case@2.0.2:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   uri-js@4.4.1:
     dependencies:
