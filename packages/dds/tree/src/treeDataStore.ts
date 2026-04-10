@@ -3,17 +3,9 @@
  * Licensed under the MIT License.
  */
 
-import type {
-	ImplicitFieldSchema,
-	InsertableTreeFieldFromImplicitField,
-	ITree,
-	TreeView,
-	TreeViewConfiguration,
-} from "./simple-tree/index.js";
+import type { IFluidLoadable } from "@fluidframework/core-interfaces";
 import type { DataStoreKind } from "@fluidframework/runtime-definitions/internal";
 import type { SharedObjectKey, SharedObjectKind } from "@fluidframework/shared-object-base";
-import { SharedTree } from "./treeFactory.js";
-import type { IFluidLoadable } from "@fluidframework/core-interfaces";
 import {
 	type SharedObjectCreator,
 	type SharedObjectRegistry,
@@ -21,6 +13,15 @@ import {
 	dataStoreKind,
 	type DataStoreOptions,
 } from "@fluidframework/shared-object-base/internal";
+
+import type {
+	ImplicitFieldSchema,
+	InsertableTreeFieldFromImplicitField,
+	ITree,
+	TreeView,
+	TreeViewConfiguration,
+} from "./simple-tree/index.js";
+import { SharedTree } from "./treeFactory.js";
 
 /**
  * Options for {@link treeDataStoreKind}.

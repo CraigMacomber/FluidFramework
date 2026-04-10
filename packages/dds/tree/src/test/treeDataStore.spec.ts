@@ -5,21 +5,22 @@
 
 import { strict as assert } from "node:assert";
 
+import type { IFluidLoadable } from "@fluidframework/core-interfaces";
+import {
+	createEphemeralServiceClient,
+	synchronizeLocalService,
+} from "@fluidframework/local-driver/internal";
+import { dataStoreKind } from "@fluidframework/shared-object-base/internal";
+
+import { SchematizingSimpleTreeView, Tree } from "../shared-tree/index.js";
 import {
 	SchemaFactory,
 	SchemaFactoryAlpha,
 	TreeViewConfiguration,
 	type ITree,
 } from "../simple-tree/index.js";
-import { dataStoreKind } from "@fluidframework/shared-object-base/internal";
 import { instantiateTreeFirstTime, treeDataStoreKind } from "../treeDataStore.js";
-import {
-	createEphemeralServiceClient,
-	synchronizeLocalService,
-} from "@fluidframework/local-driver/internal";
 import { SharedTree } from "../treeFactory.js";
-import { SchematizingSimpleTreeView, Tree } from "../shared-tree/index.js";
-import type { IFluidLoadable } from "@fluidframework/core-interfaces";
 
 describe("treeDataStore", () => {
 	it("detached example", async () => {
@@ -63,7 +64,8 @@ describe("treeDataStore", () => {
 		// Someday it would be nice to support this pattern, but that is longer term.
 		// const container1 = await service.attachContainer(createContainer(myFactory));
 
-		const container1 = await (await service.createContainer(myFactory)).attach();
+		const detachedContainer1 = await service.createContainer(myFactory);
+		const container1 = await detachedContainer1.attach();
 
 		assert.equal(container1.data.root, 1);
 
@@ -93,7 +95,8 @@ describe("treeDataStore", () => {
 				initializer: () => 1,
 			});
 
-			const container = await (await service.createContainer(myFactory)).attach();
+			const detachedContainer = await service.createContainer(myFactory);
+			const container = await detachedContainer.attach();
 			id = container.id;
 		}
 
@@ -122,8 +125,10 @@ describe("treeDataStore", () => {
 				const module = await import("../treeFactory.js");
 				return (type) => module.SharedTree;
 			},
-			instantiateFirstTime: async (creator) =>
-				creator.create((await import("../treeFactory.js")).SharedTree),
+			instantiateFirstTime: async (creator) => {
+				const { SharedTree: SharedTreeFactory } = await import("../treeFactory.js");
+				return creator.create(SharedTreeFactory);
+			},
 			view: async (tree) => tree,
 		});
 
@@ -182,7 +187,8 @@ describe("treeDataStore", () => {
 		const service = createEphemeralServiceClient();
 
 		// Create a container with a MyTree as the data
-		const container1 = await (await service.createContainer(MyTree)).attach();
+		const detachedContainer = await service.createContainer(MyTree);
+		const container1 = await detachedContainer.attach();
 
 		// Create a second MyTree in the container, and put a handle to it in the root data.
 		{
