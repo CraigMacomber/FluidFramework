@@ -49,6 +49,8 @@ import { LocalDocumentServiceFactory } from "./localDocumentServiceFactory.js";
 import { createLocalResolverCreateNewRequest, LocalResolver } from "./localResolver.js";
 import { pkgVersion } from "./packageVersion.js";
 
+const defaultServiceOptions: ServiceOptions = { minVersionForCollab: pkgVersion };
+
 /**
  * Creates and returns a document service for local use.
  *
@@ -58,7 +60,7 @@ import { pkgVersion } from "./packageVersion.js";
  * @alpha
  */
 export function createEphemeralServiceClient(
-	options: ServiceOptions = { minVersionForCollab: pkgVersion },
+	options: ServiceOptions = defaultServiceOptions,
 ): ServiceClient {
 	return new EphemeralServiceClient(options);
 }
@@ -104,7 +106,7 @@ class EphemeralServiceClient implements ServiceClient {
 
 let containers: EphemeralServiceContainer<unknown>[] = [];
 
-function updateContainers() {
+function updateContainers(): void {
 	containers = containers.filter((c) => !c.container.closed);
 }
 
@@ -135,7 +137,7 @@ export async function synchronizeLocalService(): Promise<void> {
 				isDirty
 			);
 		});
-		if (dirtyContainers.length !== 0) {
+		if (dirtyContainers.length > 0) {
 			await Promise.all(
 				dirtyContainers.map(async (c) =>
 					Promise.race([
@@ -209,7 +211,7 @@ function makeCodeLoader<T>(
 				return rootDataStore as T & FluidObject;
 			};
 
-			const runtime = await ContainerRuntime.loadRuntime2({
+			const { runtime } = await ContainerRuntime.loadRuntime2({
 				context,
 				registry: convertRegistry(registry),
 				provideEntryPoint,
