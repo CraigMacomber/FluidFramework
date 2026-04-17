@@ -17,6 +17,13 @@ import { buildDicePresence } from "./presence.js";
 import type { TwoDiceApp } from "./schema.js";
 import { makeAppView } from "./view.js";
 
+/**
+ * Wires up controllers and renders the app UI into `#content` once the container is ready.
+ *
+ * @param appModel - The root data model containing both dice.
+ * @param presence - Presence instance used to broadcast and observe remote dice rolls.
+ * @param audience - Audience used to display currently-connected users.
+ */
 function setupApp(
 	appModel: TwoDiceApp,
 	presence: ReturnType<typeof getPresenceViaExtensionStore>,
@@ -55,11 +62,17 @@ function setupApp(
 	);
 }
 
+/**
+ * Entry point: creates a new container when no URL hash is present, otherwise loads the existing one.
+ * The container ID is stored in `location.hash` so collaborators can share the URL.
+ */
 async function start(): Promise<void> {
+	// No hash → create a new container; hash present → load an existing one
 	const createNew = location.hash.length === 0;
 
 	if (createNew) {
 		const container = await service.createContainer(diceRollerDataStoreKind);
+		// Attach uploads the container to Tinylicious and returns a stable ID
 		const attached = await container.attach();
 		// eslint-disable-next-line require-atomic-updates
 		location.hash = attached.id;

@@ -37,6 +37,12 @@ function makeDiceRollerView(diceRoller: IDiceRollerController): HTMLDivElement {
 	return wrapperDiv;
 }
 
+/**
+ * Creates a DOM section showing the current user and all other connected users.
+ * User IDs are truncated to 8 characters for readability.
+ *
+ * @param audience - Audience providing member info. When `undefined` (e.g. in tests), returns a placeholder.
+ */
 function makeAudienceView(audience?: IAudience): HTMLDivElement {
 	// Accommodating the test which doesn't provide an audience
 	if (audience === undefined) {
@@ -100,6 +106,10 @@ function makeDiceValueElement(id: string, value: DiceValues): HTMLDivElement[] {
 	]);
 }
 
+/**
+ * Renders the current remote last-roll state into `target` as a header row followed by one row per attendee.
+ * Replaces all existing children on each call.
+ */
 export function makeDiceValuesView(
 	target: HTMLDivElement,
 	lastRoll: LatestRaw<DiceValues>,
@@ -117,6 +127,14 @@ function addLogEntry(logDiv: HTMLDivElement, entry: string): void {
 	logDiv.prepend(entryDiv);
 }
 
+/**
+ * Creates a DOM section with two panels: a grid of each attendee's last dice rolls (updated in real-time
+ * via presence), and a scrollable log of remote join/leave and roll activity.
+ *
+ * @param presenceConfig - Presence instance and last-roll state accessor. When `undefined` (e.g. in tests),
+ * returns a placeholder.
+ * @param audience - Audience used to resolve display names for attendee events.
+ */
 function makePresenceView(
 	// Biome insist on no semicolon - https://dev.azure.com/fluidframework/internal/_workitems/edit/9083
 	presenceConfig?: { presence: Presence; lastRoll: LatestRaw<DiceValues> },
@@ -192,6 +210,13 @@ function makePresenceView(
 	return presenceDiv;
 }
 
+/**
+ * Builds the top-level app view: a row of dice rollers, an audience panel, and a presence panel.
+ *
+ * @param diceRollerControllers - One controller per die; each gets its own interactive roller view.
+ * @param presenceConfig - Optional presence state (omit in tests to suppress presence UI).
+ * @param audience - Optional audience (omit in tests to suppress audience UI).
+ */
 export function makeAppView(
 	diceRollerControllers: IDiceRollerController[],
 	// Biome insist on no semicolon - https://dev.azure.com/fluidframework/internal/_workitems/edit/9083

@@ -17,6 +17,14 @@ import { makeAppView } from "../src/view.js";
 // Shared ephemeral service — module-level singleton ensures all containers share the same in-memory server
 const service = createEphemeralServiceClient();
 
+/**
+ * Creates or loads a Fluid container and renders the dice roller UI into the given DOM element.
+ *
+ * @param containerId - When `undefined` a new detached container is created and then attached.
+ * When provided, the existing container with that ID is loaded (after synchronizing the local server).
+ * @param elementId - ID of the DOM element to render into.
+ * @returns The container ID — either freshly generated or the one that was passed in.
+ */
 async function createContainerAndRenderInElement(
 	containerId: string | undefined,
 	elementId: string,
@@ -48,6 +56,14 @@ async function createContainerAndRenderInElement(
 	return id;
 }
 
+/**
+ * Bootstraps the side-by-side test page.
+ *
+ * @remarks
+ * Creates a single container (left panel) or loads an existing one identified by `location.hash`,
+ * then loads the same container a second time into the right panel to simulate two collaborating users.
+ * Sets `window.fluidStarted = true` when complete so test automation can detect readiness.
+ */
 async function setup(): Promise<void> {
 	const createNew = window.location.hash.length === 0;
 	if (createNew) {

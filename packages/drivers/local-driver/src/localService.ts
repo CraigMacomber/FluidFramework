@@ -264,6 +264,17 @@ function makeCodeLoader<T>(
 
 let documentIdCounter = 0;
 
+/**
+ * A Fluid container backed by an ephemeral (in-memory) local service, implementing
+ * {@link @fluidframework/runtime-definitions#FluidContainerWithService}.
+ *
+ * @remarks
+ * Data is stored in-memory and shared only within the same browser session via the module-level
+ * {@link localServer}. All containers created by {@link createEphemeralServiceClient} share the
+ * same server instance, enabling side-by-side collaboration testing without a real server.
+ *
+ * @alpha
+ */
 export class EphemeralServiceContainer<TData> implements FluidContainerWithService<TData> {
 	public static async createDetached<T>(
 		registry: DataStoreRegistry<T>,

@@ -15,6 +15,10 @@ const treeViewConfig = new TreeViewConfiguration({
 	enableSchemaValidation: true,
 });
 
+/**
+ * Data store kind for the dice roller application.
+ * Defines the schema, view configuration, and initial state for a SharedTree-based two-dice roller.
+ */
 export const diceRollerDataStoreKind = treeDataStoreKind({
 	type: "dice-roller",
 	config: treeViewConfig,
@@ -25,4 +29,12 @@ export const diceRollerDataStoreKind = treeDataStoreKind({
 		}),
 });
 
+/**
+ * Service client backed by a local Tinylicious server.
+ *
+ * @remarks
+ * Requires a Tinylicious server to be running (e.g. `pnpm tinylicious`). Unlike the ephemeral client
+ * used in tests, this client persists containers and supports real multi-process collaboration.
+ * In GitHub Codespaces, set {@link TinyliciousServiceOptions.endpoint} to the forwarded port URL.
+ */
 export const service = createTinyliciousServiceClient();

@@ -39,6 +39,10 @@ export class TextEditorRoot extends sf.object("TextEditorRoot", {
 
 export const treeConfig = new TreeViewConfiguration({ schema: TextEditorRoot });
 
+/**
+ * Data store kind for the text editor application.
+ * Defines the schema, view configuration, and initial (empty) state for both plain and formatted text trees.
+ */
 const textEditorKind = treeDataStoreKind({
 	type: "text-editor",
 	config: treeConfig,
@@ -57,6 +61,14 @@ interface DualUserViews {
 	containerId: string;
 }
 
+/**
+ * Initializes Fluid containers and returns tree views for two simulated users.
+ *
+ * @remarks
+ * Uses `location.hash` to determine whether to create a new container or load an existing one.
+ * A second independent service client then loads the same container, providing a second user's view
+ * for side-by-side collaboration testing in a single browser tab.
+ */
 async function initFluid(): Promise<DualUserViews> {
 	const service1 = createTinyliciousServiceClient();
 
