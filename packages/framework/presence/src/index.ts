@@ -82,4 +82,5 @@ export {
 export {
 	getPresence,
 	getPresenceFromDataStoreContext,
+	getPresenceViaExtensionStore,
 } from "./getPresence.js";

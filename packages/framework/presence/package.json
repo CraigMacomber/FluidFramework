@@ -52,6 +52,16 @@
 				"types": "./dist/legacy.alpha.d.ts",
 				"default": "./dist/index.js"
 			}
+		},
+		"./internal": {
+			"import": {
+				"types": "./lib/index.d.ts",
+				"default": "./lib/index.js"
+			},
+			"require": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			}
 		}
 	},
 	"files": [

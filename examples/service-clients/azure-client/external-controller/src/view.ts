@@ -3,11 +3,10 @@
  * Licensed under the MIT License.
  */
 
-import type { AzureMember, IAzureAudience } from "@fluidframework/azure-client";
+import type { IAudience } from "@fluidframework/container-definitions";
 import type { LatestRaw, Presence } from "@fluidframework/presence";
 
 import type { IDiceRollerController } from "./controller.js";
-import type { ICustomUserDetails } from "./fluid.js";
 import type { DiceValues } from "./presence.js";
 
 function makeDiceRollerView(diceRoller: IDiceRollerController): HTMLDivElement {
@@ -38,7 +37,7 @@ function makeDiceRollerView(diceRoller: IDiceRollerController): HTMLDivElement {
 	return wrapperDiv;
 }
 
-function makeAudienceView(audience?: IAzureAudience): HTMLDivElement {
+function makeAudienceView(audience?: IAudience): HTMLDivElement {
 	// Accommodating the test which doesn't provide an audience
 	if (audience === undefined) {
 		const noAudienceDiv = document.createElement("div");
@@ -53,35 +52,29 @@ function makeAudienceView(audience?: IAzureAudience): HTMLDivElement {
 	audienceDiv.style.fontSize = "20px";
 
 	const onAudienceChanged = (): void => {
-		const members = audience.getMembers() as ReadonlyMap<
-			string,
-			AzureMember<ICustomUserDetails>
-		>;
-		const self = audience.getMyself();
+		const members = audience.getMembers();
+		const self = audience.getSelf();
+		const selfClientId = self?.clientId;
 		const memberStrings: string[] = [];
-		const useAzure = process.env.FLUID_CLIENT === "azure";
 
-		for (const member of members.values()) {
-			if (member.id !== self?.id) {
-				if (useAzure) {
-					const memberString = `${member.name}: {Gender: ${member.additionalDetails?.gender},
-                        Email: ${member.additionalDetails?.email}}`;
-					memberStrings.push(memberString);
-				} else {
-					memberStrings.push(member.name);
-				}
+		for (const [clientId, member] of members.entries()) {
+			if (clientId !== selfClientId) {
+				memberStrings.push(member.user.id.slice(0, 8));
 			}
 		}
 
+		const selfMember =
+			selfClientId === undefined ? undefined : audience.getMember(selfClientId);
 		const currentUserDiv = document.createElement("div");
-		currentUserDiv.textContent = `Current User: ${self?.name}`;
+		currentUserDiv.textContent = `Current User: ${selfMember?.user.id.slice(0, 8) ?? "(unknown)"}`;
 		const otherUsersDiv = document.createElement("div");
 		otherUsersDiv.textContent = `Other Users: ${memberStrings.join(", ")}`;
 		audienceDiv.replaceChildren(currentUserDiv, otherUsersDiv);
 	};
 
 	onAudienceChanged();
-	audience.on("membersChanged", onAudienceChanged);
+	audience.on("addMember", onAudienceChanged);
+	audience.on("removeMember", onAudienceChanged);
 
 	wrapperDiv.append(audienceDiv);
 	return wrapperDiv;
@@ -127,7 +120,7 @@ function addLogEntry(logDiv: HTMLDivElement, entry: string): void {
 function makePresenceView(
 	// Biome insist on no semicolon - https://dev.azure.com/fluidframework/internal/_workitems/edit/9083
 	presenceConfig?: { presence: Presence; lastRoll: LatestRaw<DiceValues> },
-	audience?: IAzureAudience,
+	audience?: IAudience,
 ): HTMLDivElement {
 	const presenceDiv = document.createElement("div");
 	// Accommodating the test which doesn't provide a presence
@@ -167,19 +160,19 @@ function makePresenceView(
 	logContentDiv.style.border = "1px solid black";
 	if (audience !== undefined) {
 		presenceConfig.presence.attendees.events.on("attendeeConnected", (attendee) => {
-			const name = audience.getMembers().get(attendee.getConnectionId())?.name;
+			const name = audience.getMembers().get(attendee.getConnectionId())?.user.id.slice(0, 8);
 			const update = `client ${name === undefined ? "(unnamed)" : `named ${name}`} 🔗 with id ${attendee.attendeeId} joined`;
 			addLogEntry(logContentDiv, update);
 		});
 
 		presenceConfig.presence.attendees.events.on("attendeeDisconnected", (attendee) => {
 			// Filter for remote attendees
-			const self = audience.getMyself();
-			if (
-				self &&
-				attendee !== presenceConfig.presence.attendees.getAttendee(self.currentConnection)
-			) {
-				const name = audience.getMembers().get(attendee.getConnectionId())?.name;
+			const self = audience.getSelf();
+			if (self && attendee !== presenceConfig.presence.attendees.getAttendee(self.clientId)) {
+				const name = audience
+					.getMembers()
+					.get(attendee.getConnectionId())
+					?.user.id.slice(0, 8);
 				const update = `client ${name === undefined ? "(unnamed)" : `named ${name}`} ⛓️‍💥 with id ${attendee.attendeeId} left`;
 				addLogEntry(logContentDiv, update);
 			}
@@ -203,7 +196,7 @@ export function makeAppView(
 	diceRollerControllers: IDiceRollerController[],
 	// Biome insist on no semicolon - https://dev.azure.com/fluidframework/internal/_workitems/edit/9083
 	presenceConfig?: { presence: Presence; lastRoll: LatestRaw<DiceValues> },
-	audience?: IAzureAudience,
+	audience?: IAudience,
 ): HTMLDivElement {
 	const diceRollerViews = diceRollerControllers.map((controller) =>
 		makeDiceRollerView(controller),

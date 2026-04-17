@@ -83,10 +83,17 @@
 		"typetests:gen": "flub generate typetests --dir . -v"
 	},
 	"dependencies": {
+		"@fluidframework/container-definitions": "workspace:~",
+		"@fluidframework/container-loader": "workspace:~",
+		"@fluidframework/container-runtime": "workspace:^",
+		"@fluidframework/container-runtime-definitions": "workspace:^",
 		"@fluidframework/core-interfaces": "workspace:~",
+		"@fluidframework/core-utils": "workspace:~",
 		"@fluidframework/driver-definitions": "workspace:~",
 		"@fluidframework/driver-utils": "workspace:~",
 		"@fluidframework/routerlicious-driver": "workspace:~",
+		"@fluidframework/runtime-definitions": "workspace:~",
+		"@fluidframework/telemetry-utils": "workspace:~",
 		"jsrsasign": "^11.1.1",
 		"uuid": "^11.1.0"
 	},

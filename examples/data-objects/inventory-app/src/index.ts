@@ -3,16 +3,33 @@
  * Licensed under the MIT License.
  */
 
-import { ContainerViewRuntimeFactory } from "@fluid-example/example-utils";
-import type { IReactTreeDataObject } from "@fluidframework/react/alpha";
+import { toPropTreeNode } from "@fluidframework/react/alpha";
+// eslint-disable-next-line import-x/no-internal-modules
+import { createTinyliciousServiceClient } from "@fluidframework/tinylicious-driver/internal";
 import { createElement } from "react";
+// eslint-disable-next-line import-x/no-internal-modules
+import { createRoot } from "react-dom/client";
 
-import { InventoryListFactory } from "./inventoryList.js";
+import { inventoryDataStoreKind } from "./inventoryList.js";
 import type { Inventory } from "./schema.js";
 import { MainView } from "./view/index.js";
 
-export const fluidExport = new ContainerViewRuntimeFactory(
-	InventoryListFactory,
-	(tree: IReactTreeDataObject<typeof Inventory>) =>
-		createElement(tree.TreeViewComponent, { viewComponent: MainView }),
-);
+const service = createTinyliciousServiceClient();
+
+const id = location.hash.slice(1);
+let root: Inventory;
+if (id.length > 0) {
+	const container = await service.loadContainer(id, inventoryDataStoreKind);
+	root = container.data.root;
+} else {
+	const container = await service.createContainer(inventoryDataStoreKind);
+	const attached = await container.attach();
+	location.hash = attached.id;
+	root = attached.data.root;
+}
+
+const rootEl = document.querySelector("#content");
+if (rootEl === null) {
+	throw new Error("No #content element found");
+}
+createRoot(rootEl).render(createElement(MainView, { root: toPropTreeNode(root) }));

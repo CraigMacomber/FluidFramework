@@ -12,3 +12,4 @@ export { createLocalResolverCreateNewRequest, LocalResolver } from "./localResol
 export { localDriverCompatDetailsForLoader } from "./localLayerCompatState.js";
 export { LocalSessionStorageDbFactory } from "./localSessionStorageDb.js";
 export { createEphemeralServiceClient, synchronizeLocalService } from "./localService.js";
+export { getLocalContainerAudience } from "./localContainerServices.js";

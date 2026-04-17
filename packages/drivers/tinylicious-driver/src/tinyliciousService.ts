@@ -3,16 +3,15 @@
  * Licensed under the MIT License.
  */
 
-import {
-	ConnectionState,
-	type ICodeDetailsLoader,
-	type IContainer,
-	type IContainerContext,
-	type IFluidCodeDetails,
-	type IFluidCodeDetailsComparer,
-	type IFluidModuleWithDetails,
-	type IRuntime,
-	type IRuntimeFactory,
+import type {
+	ICodeDetailsLoader,
+	IContainer,
+	IContainerContext,
+	IFluidCodeDetails,
+	IFluidCodeDetailsComparer,
+	IFluidModuleWithDetails,
+	IRuntime,
+	IRuntimeFactory,
 } from "@fluidframework/container-definitions/internal";
 import {
 	createDetachedContainer,
@@ -20,19 +19,22 @@ import {
 } from "@fluidframework/container-loader/internal";
 import { ContainerRuntime } from "@fluidframework/container-runtime/internal";
 import type { IContainerRuntime } from "@fluidframework/container-runtime-definitions/internal";
-import type { FluidObject, IRequest } from "@fluidframework/core-interfaces";
+import type { FluidObject } from "@fluidframework/core-interfaces";
 import { assert } from "@fluidframework/core-utils/internal";
+import type { IUrlResolver } from "@fluidframework/driver-definitions/internal";
+import { RouterliciousDocumentServiceFactory } from "@fluidframework/routerlicious-driver/internal";
 import type {
-	ServiceOptions,
-	ServiceClient,
-	FluidContainerAttached,
-	DataStoreKind,
-	Registry,
-	FluidContainerWithService,
-	MinimumVersionForCollab,
-	IFluidDataStoreRegistry,
-	FluidDataStoreRegistryEntry,
 	DataStoreKey,
+	DataStoreKind,
+	DataStoreRegistry,
+	FluidContainerAttached,
+	FluidContainerWithService,
+	FluidDataStoreRegistryEntry,
+	IFluidDataStoreRegistry,
+	MinimumVersionForCollab,
+	Registry,
+	ServiceClient,
+	ServiceOptions,
 } from "@fluidframework/runtime-definitions/internal";
 import {
 	basicKey,
@@ -40,41 +42,58 @@ import {
 	registryLookup,
 } from "@fluidframework/runtime-definitions/internal";
 import {
-	LocalDeltaConnectionServer,
-	type ILocalDeltaConnectionServer,
-} from "@fluidframework/server-local-server";
-import { UsageError } from "@fluidframework/telemetry-utils/internal";
+	UsageError,
+	wrapConfigProviderWithDefaults,
+} from "@fluidframework/telemetry-utils/internal";
 
-import { LocalDocumentServiceFactory } from "./localDocumentServiceFactory.js";
-import { createLocalResolverCreateNewRequest, LocalResolver } from "./localResolver.js";
-import { pkgVersion } from "./packageVersion.js";
+import { InsecureTinyliciousTokenProvider } from "./insecureTinyliciousTokenProvider.js";
+import {
+	createInsecureTinyliciousTestUrlResolver,
+	createTinyliciousCreateNewRequest,
+	InsecureTinyliciousUrlResolver,
+} from "./insecureTinyliciousUrlResolver.js";
 
-const defaultServiceOptions: ServiceOptions = { minVersionForCollab: pkgVersion };
+const defaultMinVersionForCollab: MinimumVersionForCollab = "2.0.0";
+const defaultServiceOptions: ServiceOptions = {
+	minVersionForCollab: defaultMinVersionForCollab,
+};
 
 /**
- * Creates and returns a document service for local use.
- *
- * @remarks
- * Since all collaborators are in the same process, minVersionForCollab can be omitted and will default to the current version.
- *
+ * Options for configuring a {@link createTinyliciousServiceClient}.
  * @alpha
  */
-export function createEphemeralServiceClient(
-	options: ServiceOptions = defaultServiceOptions,
-): ServiceClient {
-	return new EphemeralServiceClient(options);
+export interface TinyliciousServiceOptions extends ServiceOptions {
+	/**
+	 * The port tinylicious is listening on. Defaults to 7070.
+	 */
+	readonly port?: number;
+	/**
+	 * The endpoint tinylicious is listening on. Defaults to "http://localhost".
+	 * In GitHub Codespaces, use the forwarded URL for the tinylicious port.
+	 */
+	readonly endpoint?: string;
 }
 
 /**
- * Ephemeral service client for local use.
+ * Creates a {@link @fluidframework/runtime-definitions#ServiceClient} backed by a local tinylicious server.
  *
- * TODO: Implement:
- * Maybe this can be layered on-top of `IDocumentService`?
- * If so, a base class could be written in terms of `IDocumentService`,
- * then the service specific derived class could use {@link createLocalDocumentService} to get it.
+ * @remarks
+ * Requires a tinylicious server to be running (e.g. `pnpm tinylicious`).
+ * Unlike {@link @fluidframework/local-driver#createEphemeralServiceClient}, this client persists containers
+ * and supports real multi-process collaboration.
+ *
+ * @alpha
  */
-class EphemeralServiceClient implements ServiceClient {
-	public constructor(public readonly options: ServiceOptions) {}
+export function createTinyliciousServiceClient(
+	options: TinyliciousServiceOptions = defaultServiceOptions,
+): ServiceClient {
+	return new TinyliciousServiceClientImpl(options);
+}
+
+const rootDataStoreId = "root";
+
+class TinyliciousServiceClientImpl implements ServiceClient {
+	public constructor(private readonly options: TinyliciousServiceOptions) {}
 
 	public createContainer<T>(root: DataStoreKind<T>): Promise<FluidContainerWithService<T>>;
 
@@ -89,10 +108,14 @@ class EphemeralServiceClient implements ServiceClient {
 	): Promise<FluidContainerWithService<T>> {
 		if (registry === undefined) {
 			DataStoreKindImplementation.narrowGeneric(root);
-			return EphemeralServiceContainer.createDetached(normalizeRegistry(root), this, root);
+			return TinyliciousServiceContainer.createDetached(
+				normalizeRegistry(root),
+				this.options,
+				root,
+			);
 		} else {
 			const result = await registryLookup(registry, root);
-			return EphemeralServiceContainer.createDetached(registry, this, result);
+			return TinyliciousServiceContainer.createDetached(registry, this.options, result);
 		}
 	}
 
@@ -100,81 +123,9 @@ class EphemeralServiceClient implements ServiceClient {
 		id: string,
 		root: DataStoreKind<T> | Registry<Promise<DataStoreKind<T>>>,
 	): Promise<FluidContainerAttached<T>> {
-		return EphemeralServiceContainer.load(normalizeRegistry(root), this, id);
+		return TinyliciousServiceContainer.load(normalizeRegistry(root), this.options, id);
 	}
 }
-
-let containers: EphemeralServiceContainer<unknown>[] = [];
-
-function updateContainers(): void {
-	containers = containers.filter((c) => !c.container.closed);
-}
-
-/**
- * Synchronizes all local clients.
- * @alpha
- */
-export async function synchronizeLocalService(): Promise<void> {
-	// based on LoaderContainerTracker.ensureSynchronized, but stripped down a lot. Might miss some edge cases.
-
-	let clean = 0;
-
-	while (clean < 2) {
-		// TODO: does this accomplish anything?
-		while (await localServer.hasPendingWork()) {
-			clean = 0;
-		}
-
-		updateContainers();
-		const containersToApply = containers.map((c) => c.container);
-
-		// Ignore readonly dirty containers, because it can't send ops and nothing can be done about it being dirty
-		const dirtyContainers = containersToApply.filter((c) => {
-			const { deltaManager, isDirty, connectionState } = c;
-			return (
-				connectionState !== ConnectionState.Disconnected &&
-				deltaManager.readOnlyInfo.readonly !== true &&
-				isDirty
-			);
-		});
-		if (dirtyContainers.length > 0) {
-			await Promise.all(
-				dirtyContainers.map(async (c) =>
-					Promise.race([
-						new Promise((resolve) => c.once("saved", resolve)),
-						new Promise((resolve) => c.once("closed", resolve)),
-					]),
-				),
-			);
-			clean = 0;
-		}
-
-		// yield a turn to allow side effect of resuming or the ops we just processed execute before we check
-		await new Promise<void>((resolve) => {
-			setTimeout(resolve, 0);
-		});
-
-		clean++;
-	}
-}
-
-// A single localServer should be shared by all instances of a local driver so they can communicate
-// with each other.
-const localServer: ILocalDeltaConnectionServer =
-	LocalDeltaConnectionServer.create(
-		// new LocalSessionStorageDbFactory(),
-	);
-
-const urlResolver = new LocalResolver();
-const documentServiceFactory = new LocalDocumentServiceFactory(localServer);
-// const createCreateNewRequest = (id: string) => createLocalResolverCreateNewRequest(id);
-const createLoadExistingRequest = (documentId: string): IRequest => {
-	return { url: `http://localhost:3000/${documentId}` };
-};
-
-const rootDataStoreId = "root";
-
-type DataStoreRegistry<T> = Registry<Promise<DataStoreKind<T>>>;
 
 function convertRegistry<T>(registry: DataStoreRegistry<T>): IFluidDataStoreRegistry {
 	return {
@@ -207,7 +158,6 @@ function makeCodeLoader<T>(
 					throw new Error("Root data store missing!");
 				}
 				const rootDataStore = await data.get();
-				// TODO: verify type?
 				return rootDataStore as T & FluidObject;
 			};
 
@@ -250,36 +200,58 @@ function makeCodeLoader<T>(
 		},
 	};
 
-	const codeLoader: ICodeDetailsLoader = {
+	return {
 		load: async (details: IFluidCodeDetails): Promise<IFluidModuleWithDetails> => {
-			return {
-				module: { fluidExport }, // new BlobCollectionContainerRuntimeFactory()
-				details,
-			};
+			return { module: { fluidExport }, details };
 		},
 	};
-
-	return codeLoader;
 }
 
-let documentIdCounter = 0;
+function makeContainerLoaderOptions(options: TinyliciousServiceOptions): {
+	urlResolver: IUrlResolver;
+	documentServiceFactory: RouterliciousDocumentServiceFactory;
+	clientDetailsOverride: { capabilities: { interactive: boolean } };
+	configProvider: ReturnType<typeof wrapConfigProviderWithDefaults>;
+} {
+	const tokenProvider = new InsecureTinyliciousTokenProvider();
+	const urlResolver =
+		options.port === undefined && options.endpoint === undefined
+			? createInsecureTinyliciousTestUrlResolver()
+			: new InsecureTinyliciousUrlResolver(options.port, options.endpoint);
+	const documentServiceFactory = new RouterliciousDocumentServiceFactory(tokenProvider);
 
-export class EphemeralServiceContainer<TData> implements FluidContainerWithService<TData> {
+	return {
+		urlResolver,
+		documentServiceFactory,
+		clientDetailsOverride: { capabilities: { interactive: true } },
+		configProvider: wrapConfigProviderWithDefaults(undefined, {
+			"Fluid.Container.ForceWriteConnection": true,
+		}),
+	};
+}
+
+/**
+ * A Fluid container backed by tinylicious, implementing {@link @fluidframework/runtime-definitions#FluidContainerWithService}.
+ * @alpha
+ */
+export class TinyliciousServiceContainer<TData> implements FluidContainerWithService<TData> {
 	public static async createDetached<T>(
 		registry: DataStoreRegistry<T>,
-		service: EphemeralServiceClient,
+		options: TinyliciousServiceOptions,
 		root: DataStoreKind<T>,
-	): Promise<EphemeralServiceContainer<T>> {
+	): Promise<TinyliciousServiceContainer<T>> {
+		const loaderOptions = makeContainerLoaderOptions(options);
+		const minVersionForCollab = options.minVersionForCollab ?? defaultMinVersionForCollab;
+
 		const container: IContainer = await createDetachedContainer({
-			codeDetails: { package: "1.0" },
-			urlResolver,
-			documentServiceFactory: new LocalDocumentServiceFactory(localServer),
-			codeLoader: makeCodeLoader(registry, service.options.minVersionForCollab, root),
+			codeDetails: { package: "no-dynamic-package", config: {} },
+			codeLoader: makeCodeLoader(registry, minVersionForCollab, root),
+			...loaderOptions,
 		});
 
-		return new EphemeralServiceContainer<T>(
+		return new TinyliciousServiceContainer<T>(
 			registry,
-			service,
+			options,
 			container,
 			(await container.getEntryPoint()) as T,
 			undefined,
@@ -288,45 +260,43 @@ export class EphemeralServiceContainer<TData> implements FluidContainerWithServi
 
 	public static async load<T>(
 		registry: DataStoreRegistry<T>,
-		service: EphemeralServiceClient,
+		options: TinyliciousServiceOptions,
 		id: string,
-	): Promise<EphemeralServiceContainer<T> & FluidContainerAttached<T>> {
+	): Promise<TinyliciousServiceContainer<T> & FluidContainerAttached<T>> {
+		const loaderOptions = makeContainerLoaderOptions(options);
+		const minVersionForCollab = options.minVersionForCollab ?? defaultMinVersionForCollab;
+
 		const containerInner = await loadExistingContainer({
-			request: createLoadExistingRequest(id),
-			urlResolver,
-			documentServiceFactory,
-			codeLoader: makeCodeLoader(registry, service.options.minVersionForCollab),
+			request: { url: id },
+			codeLoader: makeCodeLoader(registry, minVersionForCollab),
+			...loaderOptions,
 		});
 
-		const container = new EphemeralServiceContainer<T>(
+		const serviceContainer = new TinyliciousServiceContainer<T>(
 			registry,
-			service,
+			options,
 			containerInner,
 			(await containerInner.getEntryPoint()) as T,
 			id,
 		);
-		assert(container.id !== undefined, "id should be defined when loading a container");
-		return container as typeof container & { id: string };
+		assert(serviceContainer.id !== undefined, "id should be defined when loading a container");
+		return serviceContainer as typeof serviceContainer & { id: string };
 	}
 
 	private constructor(
 		public readonly registry: Registry<Promise<DataStoreKind<TData>>>,
-		public readonly service: EphemeralServiceClient,
+		public readonly options: TinyliciousServiceOptions,
 		public readonly container: IContainer,
 		public readonly data: TData,
 		public id: string | undefined,
-	) {
-		containers.push(this);
-		updateContainers();
-	}
+	) {}
 
 	public async createDataStore<T>(key: DataStoreKey<T>): Promise<T> {
 		const kind = await registryLookup(this.registry, key);
 		DataStoreKindImplementation.narrowGeneric(kind);
 
-		// TODO: Do something better
-		const containerRuntime = (this.container as any).runtime as ContainerRuntime;
-		// TODO: Do something better
+		const containerRuntime = (this.container as unknown as { runtime: ContainerRuntime })
+			.runtime;
 		const context = containerRuntime.createDetachedDataStore([kind.type]);
 		const channel = await kind.instantiateDataStore(context, false);
 		const dataStore = await context.attachRuntime(kind, channel);
@@ -335,13 +305,11 @@ export class EphemeralServiceContainer<TData> implements FluidContainerWithServi
 	}
 
 	public async attach(): Promise<FluidContainerAttached<TData>> {
-		// TODO: handel concurrent attach calls
 		if (this.id !== undefined) {
 			throw new UsageError("Container already attached");
 		}
 
-		const documentId = (documentIdCounter++).toString();
-		await this.container.attach(createLocalResolverCreateNewRequest(documentId));
+		await this.container.attach(createTinyliciousCreateNewRequest());
 
 		if (this.container.resolvedUrl === undefined) {
 			throw new Error("Resolved Url unexpectedly missing!");

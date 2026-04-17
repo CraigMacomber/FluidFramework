@@ -3,11 +3,12 @@
  * Licensed under the MIT License.
  */
 
-import type { Presence } from "@fluid-internal/presence-definitions";
+import type { Presence, PresenceWithNotifications } from "@fluid-internal/presence-definitions";
 import {
 	ContainerPresenceFactory,
 	extensionId,
 } from "@fluid-internal/presence-runtime/extension";
+import type { ContainerExtensionStore } from "@fluidframework/container-runtime-definitions/internal";
 import { assert } from "@fluidframework/core-utils/internal";
 import type { IFluidContainer } from "@fluidframework/fluid-static";
 import { getPresenceAlpha } from "@fluidframework/fluid-static/internal";
@@ -45,4 +46,18 @@ function assertContextHasExtensionProvider(
 export function getPresenceFromDataStoreContext(context: IFluidDataStoreContext): Presence {
 	assertContextHasExtensionProvider(context);
 	return context.getExtension(extensionId, ContainerPresenceFactory);
+}
+
+/**
+ * Get {@link Presence} from a {@link @fluidframework/container-runtime-definitions#ContainerExtensionStore}.
+ *
+ * @remarks
+ * Use this to access presence from a Fluid container obtained via a {@link @fluidframework/runtime-definitions#ServiceClient}.
+ *
+ * @internal
+ */
+export function getPresenceViaExtensionStore(
+	extensionStore: ContainerExtensionStore,
+): PresenceWithNotifications {
+	return extensionStore.acquireExtension(extensionId, ContainerPresenceFactory);
 }
