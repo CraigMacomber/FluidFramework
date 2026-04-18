@@ -5,14 +5,14 @@
 
 // eslint-disable-next-line import-x/no-internal-modules
 import { getPresenceViaExtensionStore } from "@fluidframework/presence/internal";
-import {
-	getTinyliciousContainerAudience,
-	getTinyliciousContainerExtensionStore,
-	// eslint-disable-next-line import-x/no-internal-modules
-} from "@fluidframework/tinylicious-driver/internal";
 
 import { DiceRollerController, type DieValue } from "./controller.js";
-import { diceRollerDataStoreKind, service } from "./fluid.js";
+import {
+	diceRollerDataStoreKind,
+	getContainerAudience,
+	getContainerExtensionStore,
+	service,
+} from "./fluid.js";
 import { buildDicePresence } from "./presence.js";
 import type { TwoDiceApp } from "./schema.js";
 import { makeAppView } from "./view.js";
@@ -27,7 +27,7 @@ import { makeAppView } from "./view.js";
 function setupApp(
 	appModel: TwoDiceApp,
 	presence: ReturnType<typeof getPresenceViaExtensionStore>,
-	audience: ReturnType<typeof getTinyliciousContainerAudience>,
+	audience: ReturnType<typeof getContainerAudience>,
 ): void {
 	// Biome insist on no semicolon - https://dev.azure.com/fluidframework/internal/_workitems/edit/9083
 	const lastRoll: { die1?: DieValue; die2?: DieValue } = {};
@@ -72,15 +72,15 @@ async function start(): Promise<void> {
 
 	if (createNew) {
 		const container = await service.createContainer(diceRollerDataStoreKind);
-		// Attach uploads the container to Tinylicious and returns a stable ID
+		// Attach uploads the container to the service and returns a stable ID
 		const attached = await container.attach();
 		// eslint-disable-next-line require-atomic-updates
 		location.hash = attached.id;
 		document.title = attached.id;
 		setupApp(
 			attached.data.root,
-			getPresenceViaExtensionStore(getTinyliciousContainerExtensionStore(attached)),
-			getTinyliciousContainerAudience(attached),
+			getPresenceViaExtensionStore(getContainerExtensionStore(attached)),
+			getContainerAudience(attached),
 		);
 	} else {
 		const id = location.hash.slice(1);
@@ -88,8 +88,8 @@ async function start(): Promise<void> {
 		document.title = id;
 		setupApp(
 			container.data.root,
-			getPresenceViaExtensionStore(getTinyliciousContainerExtensionStore(container)),
-			getTinyliciousContainerAudience(container),
+			getPresenceViaExtensionStore(getContainerExtensionStore(container)),
+			getContainerAudience(container),
 		);
 	}
 }

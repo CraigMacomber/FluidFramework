@@ -5,9 +5,11 @@
 
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const webpack = require("webpack");
 
 module.exports = (env) => {
 	const { production } = env;
+	const fluidClient = env?.FLUID_CLIENT ?? "";
 
 	return {
 		entry: {
@@ -18,6 +20,9 @@ module.exports = (env) => {
 				".js": [".ts", ".tsx", ".js"],
 				".cjs": [".cts", ".cjs"],
 				".mjs": [".mts", ".mjs"],
+			},
+			fallback: {
+				assert: require.resolve("assert/"),
 			},
 		},
 		module: {
@@ -37,7 +42,15 @@ module.exports = (env) => {
 			filename: "[name].bundle.js",
 			path: path.resolve(__dirname, "dist"),
 		},
-		plugins: [new HtmlWebpackPlugin({ template: path.join(__dirname, "src", "index.html") })],
+		plugins: [
+			new HtmlWebpackPlugin({ template: path.join(__dirname, "src", "index.html") }),
+			new webpack.DefinePlugin({
+				"process.env.FLUID_CLIENT": JSON.stringify(fluidClient),
+			}),
+			new webpack.ProvidePlugin({
+				process: "process/browser.js",
+			}),
+		],
 		watchOptions: {
 			ignored: "**/node_modules/**",
 		},

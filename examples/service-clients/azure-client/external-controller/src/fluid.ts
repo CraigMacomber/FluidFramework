@@ -3,8 +3,19 @@
  * Licensed under the MIT License.
  */
 
-// eslint-disable-next-line import-x/no-internal-modules
-import { createTinyliciousServiceClient } from "@fluidframework/tinylicious-driver/internal";
+import {
+	createAzureServiceClient,
+	getAzureContainerAudience,
+	getAzureContainerExtensionStore,
+	// eslint-disable-next-line import-x/no-internal-modules
+} from "@fluidframework/azure-client/internal";
+import {
+	InsecureTinyliciousTokenProvider,
+	createTinyliciousServiceClient,
+	getTinyliciousContainerAudience,
+	getTinyliciousContainerExtensionStore,
+	// eslint-disable-next-line import-x/no-internal-modules
+} from "@fluidframework/tinylicious-driver/internal";
 import { TreeViewConfiguration } from "fluid-framework";
 import { treeDataStoreKind } from "fluid-framework/alpha";
 
@@ -29,12 +40,32 @@ export const diceRollerDataStoreKind = treeDataStoreKind({
 		}),
 });
 
+const fluidClient = process.env.FLUID_CLIENT;
+
 /**
- * Service client backed by a local Tinylicious server.
- *
- * @remarks
- * Requires a Tinylicious server to be running (e.g. `pnpm tinylicious`). Unlike the ephemeral client
- * used in tests, this client persists containers and supports real multi-process collaboration.
- * In GitHub Codespaces, set {@link TinyliciousServiceOptions.endpoint} to the forwarded port URL.
+ * The active service client — tinylicious by default, Azure when FLUID_CLIENT=azure.
  */
-export const service = createTinyliciousServiceClient();
+export const service =
+	fluidClient === "azure"
+		? createAzureServiceClient({
+				connection: {
+					type: "local",
+					endpoint: "http://localhost:7071",
+					tokenProvider: new InsecureTinyliciousTokenProvider(),
+				},
+			})
+		: createTinyliciousServiceClient();
+
+/**
+ * Gets the audience for a container created by the active service client.
+ */
+export const getContainerAudience =
+	fluidClient === "azure" ? getAzureContainerAudience : getTinyliciousContainerAudience;
+
+/**
+ * Gets the extension store for a container created by the active service client.
+ */
+export const getContainerExtensionStore =
+	fluidClient === "azure"
+		? getAzureContainerExtensionStore
+		: getTinyliciousContainerExtensionStore;

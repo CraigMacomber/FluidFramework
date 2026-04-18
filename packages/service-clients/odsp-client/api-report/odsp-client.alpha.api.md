@@ -4,6 +4,12 @@
 
 ```ts
 
+// @alpha
+export function createOdspServiceClient(options: OdspServiceOptions): ServiceClient;
+
+// @alpha
+export function getOdspContainerAudience(container: FluidContainerAttached): IAudience;
+
 // @beta
 export type IOdspAudience = IServiceAudience<OdspMember>;
 
@@ -75,6 +81,40 @@ export interface OdspMember extends IMember {
     email: string;
     id: string;
     name: string;
+}
+
+// @alpha
+export class OdspServiceContainer<TData> implements FluidContainerWithService<TData> {
+    // (undocumented)
+    attach(): Promise<FluidContainerAttached<TData>>;
+    // (undocumented)
+    readonly container: IContainer;
+    // (undocumented)
+    createDataStore<T>(key: DataStoreKey<T>): Promise<T>;
+    // (undocumented)
+    static createDetached<T>(registry: DataStoreRegistry<T>, options: OdspServiceOptions, root: DataStoreKind<T>): Promise<OdspServiceContainer<T>>;
+    // (undocumented)
+    readonly data: TData;
+    // (undocumented)
+    id: string | undefined;
+    // (undocumented)
+    static load<T>(registry: DataStoreRegistry<T>, options: OdspServiceOptions, id: string): Promise<OdspServiceContainer<T> & FluidContainerAttached<T>>;
+    // (undocumented)
+    readonly options: OdspServiceOptions;
+    // (undocumented)
+    readonly registry: Registry<Promise<DataStoreKind<TData>>>;
+}
+
+// @alpha
+export interface OdspServiceOptions {
+    // (undocumented)
+    readonly configProvider?: IConfigProviderBase;
+    // (undocumented)
+    readonly connection: OdspConnectionConfig;
+    // (undocumented)
+    readonly logger?: ITelemetryBaseLogger;
+    // (undocumented)
+    readonly minVersionForCollab?: MinimumVersionForCollab;
 }
 
 // @beta

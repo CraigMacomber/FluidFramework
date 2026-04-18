@@ -5,37 +5,33 @@
 
 import {
 	ConnectionState,
-	type ICodeDetailsLoader,
 	type IContainer,
-	type IContainerContext,
-	type IFluidCodeDetails,
-	type IFluidCodeDetailsComparer,
-	type IFluidModuleWithDetails,
-	type IRuntime,
-	type IRuntimeFactory,
 } from "@fluidframework/container-definitions/internal";
 import {
 	createDetachedContainer,
 	loadExistingContainer,
 } from "@fluidframework/container-loader/internal";
 import { ContainerRuntime } from "@fluidframework/container-runtime/internal";
-import type { IContainerRuntime } from "@fluidframework/container-runtime-definitions/internal";
-import type { FluidObject, IRequest } from "@fluidframework/core-interfaces";
+import type { IRequest } from "@fluidframework/core-interfaces";
 import { assert } from "@fluidframework/core-utils/internal";
+import {
+	type ContainerRuntimeLoader,
+	type ContainerRuntimeLoaderParams,
+	makeCodeLoader,
+	makeServiceClientImpl,
+	rootDataStoreId,
+} from "@fluidframework/driver-utils/internal";
 import type {
 	ServiceOptions,
 	ServiceClient,
 	FluidContainerAttached,
 	DataStoreKind,
-	Registry,
-	FluidContainerWithService,
-	MinimumVersionForCollab,
-	IFluidDataStoreRegistry,
-	FluidDataStoreRegistryEntry,
 	DataStoreKey,
+	FluidContainerWithService,
+	DataStoreRegistry,
+	Registry,
 } from "@fluidframework/runtime-definitions/internal";
 import {
-	basicKey,
 	DataStoreKindImplementation,
 	registryLookup,
 } from "@fluidframework/runtime-definitions/internal";
@@ -62,47 +58,31 @@ const defaultServiceOptions: ServiceOptions = { minVersionForCollab: pkgVersion 
 export function createEphemeralServiceClient(
 	options: ServiceOptions = defaultServiceOptions,
 ): ServiceClient {
-	return new EphemeralServiceClient(options);
+	return makeServiceClientImpl(options, EphemeralServiceContainer);
 }
 
-/**
- * Ephemeral service client for local use.
- *
- * TODO: Implement:
- * Maybe this can be layered on-top of `IDocumentService`?
- * If so, a base class could be written in terms of `IDocumentService`,
- * then the service specific derived class could use {@link createLocalDocumentService} to get it.
- */
-class EphemeralServiceClient implements ServiceClient {
-	public constructor(public readonly options: ServiceOptions) {}
-
-	public createContainer<T>(root: DataStoreKind<T>): Promise<FluidContainerWithService<T>>;
-
-	public createContainer<T>(
-		root: DataStoreKey<T>,
-		registry: Registry<Promise<DataStoreKind>>,
-	): Promise<FluidContainerWithService<T>>;
-
-	public async createContainer<T>(
-		root: DataStoreKey<T> | DataStoreKind<T>,
-		registry?: Registry<Promise<DataStoreKind<T>>>,
-	): Promise<FluidContainerWithService<T>> {
-		if (registry === undefined) {
-			DataStoreKindImplementation.narrowGeneric(root);
-			return EphemeralServiceContainer.createDetached(normalizeRegistry(root), this, root);
-		} else {
-			const result = await registryLookup(registry, root);
-			return EphemeralServiceContainer.createDetached(registry, this, result);
-		}
+const containerRuntimeLoader: ContainerRuntimeLoader = async (
+	parameters: ContainerRuntimeLoaderParams,
+) => {
+	const { runtime } = await ContainerRuntime.loadRuntime2({
+		context: parameters.context,
+		registry: parameters.registry,
+		provideEntryPoint: parameters.provideEntryPoint,
+		existing: parameters.existing,
+		minVersionForCollab: parameters.minVersionForCollab,
+		runtimeOptions: { enableRuntimeIdCompressor: "on" },
+	});
+	if (!parameters.existing) {
+		assert(
+			parameters.newContainerRootType !== undefined,
+			"Root data store kind must be provided for new containers",
+		);
+		const dataStore = await runtime.createDataStore(parameters.newContainerRootType);
+		const aliasResult = await dataStore.trySetAlias(rootDataStoreId);
+		assert(aliasResult === "Success", "Should be able to set alias on new data store");
 	}
-
-	public async loadContainer<T>(
-		id: string,
-		root: DataStoreKind<T> | Registry<Promise<DataStoreKind<T>>>,
-	): Promise<FluidContainerAttached<T>> {
-		return EphemeralServiceContainer.load(normalizeRegistry(root), this, id);
-	}
-}
+	return runtime;
+};
 
 let containers: EphemeralServiceContainer<unknown>[] = [];
 
@@ -172,96 +152,6 @@ const createLoadExistingRequest = (documentId: string): IRequest => {
 	return { url: `http://localhost:3000/${documentId}` };
 };
 
-const rootDataStoreId = "root";
-
-type DataStoreRegistry<T> = Registry<Promise<DataStoreKind<T>>>;
-
-function convertRegistry<T>(registry: DataStoreRegistry<T>): IFluidDataStoreRegistry {
-	return {
-		async get(name: string): Promise<FluidDataStoreRegistryEntry | undefined> {
-			const dataStoreKind = await registryLookup(registry, basicKey(name));
-			DataStoreKindImplementation.narrowGeneric(dataStoreKind);
-			return dataStoreKind;
-		},
-		get IFluidDataStoreRegistry(): IFluidDataStoreRegistry {
-			return this;
-		},
-	};
-}
-
-function makeCodeLoader<T>(
-	registry: DataStoreRegistry<T>,
-	minVersionForCollab: MinimumVersionForCollab,
-	root?: DataStoreKind<T>,
-): ICodeDetailsLoader {
-	const fluidExport: IRuntimeFactory & IFluidCodeDetailsComparer = {
-		async instantiateRuntime(
-			context: IContainerContext,
-			existing: boolean,
-		): Promise<IRuntime> {
-			const provideEntryPoint = async (
-				entryPointRuntime: IContainerRuntime,
-			): Promise<T & FluidObject> => {
-				const data = await entryPointRuntime.getAliasedDataStoreEntryPoint(rootDataStoreId);
-				if (data === undefined) {
-					throw new Error("Root data store missing!");
-				}
-				const rootDataStore = await data.get();
-				// TODO: verify type?
-				return rootDataStore as T & FluidObject;
-			};
-
-			const { runtime } = await ContainerRuntime.loadRuntime2({
-				context,
-				registry: convertRegistry(registry),
-				provideEntryPoint,
-				existing,
-				minVersionForCollab,
-				runtimeOptions: { enableRuntimeIdCompressor: "on" },
-			});
-
-			if (!existing) {
-				assert(root !== undefined, "Root data store kind must be provided for new containers");
-				const dataStore = await runtime.createDataStore(root.type);
-				const aliasResult = await dataStore.trySetAlias(rootDataStoreId);
-				assert(aliasResult === "Success", "Should be able to set alias on new data store");
-			}
-
-			return runtime;
-		},
-
-		async satisfies(
-			candidate: IFluidCodeDetails,
-			constraint: IFluidCodeDetails,
-		): Promise<boolean> {
-			return true;
-		},
-
-		async compare(a: IFluidCodeDetails, b: IFluidCodeDetails): Promise<number | undefined> {
-			return 0;
-		},
-
-		get IRuntimeFactory(): IRuntimeFactory {
-			return fluidExport;
-		},
-
-		get IFluidCodeDetailsComparer(): IFluidCodeDetailsComparer {
-			return fluidExport;
-		},
-	};
-
-	const codeLoader: ICodeDetailsLoader = {
-		load: async (details: IFluidCodeDetails): Promise<IFluidModuleWithDetails> => {
-			return {
-				module: { fluidExport }, // new BlobCollectionContainerRuntimeFactory()
-				details,
-			};
-		},
-	};
-
-	return codeLoader;
-}
-
 let documentIdCounter = 0;
 
 /**
@@ -278,19 +168,24 @@ let documentIdCounter = 0;
 export class EphemeralServiceContainer<TData> implements FluidContainerWithService<TData> {
 	public static async createDetached<T>(
 		registry: DataStoreRegistry<T>,
-		service: EphemeralServiceClient,
+		options: ServiceOptions,
 		root: DataStoreKind<T>,
 	): Promise<EphemeralServiceContainer<T>> {
 		const container: IContainer = await createDetachedContainer({
 			codeDetails: { package: "1.0" },
 			urlResolver,
 			documentServiceFactory: new LocalDocumentServiceFactory(localServer),
-			codeLoader: makeCodeLoader(registry, service.options.minVersionForCollab, root),
+			codeLoader: makeCodeLoader(
+				registry,
+				options.minVersionForCollab,
+				containerRuntimeLoader,
+				root,
+			),
 		});
 
 		return new EphemeralServiceContainer<T>(
 			registry,
-			service,
+			options,
 			container,
 			(await container.getEntryPoint()) as T,
 			undefined,
@@ -299,19 +194,23 @@ export class EphemeralServiceContainer<TData> implements FluidContainerWithServi
 
 	public static async load<T>(
 		registry: DataStoreRegistry<T>,
-		service: EphemeralServiceClient,
+		options: ServiceOptions,
 		id: string,
 	): Promise<EphemeralServiceContainer<T> & FluidContainerAttached<T>> {
 		const containerInner = await loadExistingContainer({
 			request: createLoadExistingRequest(id),
 			urlResolver,
 			documentServiceFactory,
-			codeLoader: makeCodeLoader(registry, service.options.minVersionForCollab),
+			codeLoader: makeCodeLoader(
+				registry,
+				options.minVersionForCollab,
+				containerRuntimeLoader,
+			),
 		});
 
 		const container = new EphemeralServiceContainer<T>(
 			registry,
-			service,
+			options,
 			containerInner,
 			(await containerInner.getEntryPoint()) as T,
 			id,
@@ -322,7 +221,7 @@ export class EphemeralServiceContainer<TData> implements FluidContainerWithServi
 
 	private constructor(
 		public readonly registry: Registry<Promise<DataStoreKind<TData>>>,
-		public readonly service: EphemeralServiceClient,
+		public readonly options: ServiceOptions,
 		public readonly container: IContainer,
 		public readonly data: TData,
 		public id: string | undefined,
@@ -361,15 +260,4 @@ export class EphemeralServiceContainer<TData> implements FluidContainerWithServi
 
 		return this as typeof this & { id: string };
 	}
-}
-
-function normalizeRegistry<T>(
-	input: DataStoreKind<T> | Registry<Promise<DataStoreKind<T>>>,
-): Registry<Promise<DataStoreKind<T>>> {
-	if (DataStoreKindImplementation.guard(input)) {
-		const x = input;
-		return async () => x;
-	}
-	assert(typeof input === "function", "Registry must be a function");
-	return input;
 }

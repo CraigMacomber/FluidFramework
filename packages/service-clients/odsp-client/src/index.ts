@@ -26,3 +26,12 @@ export type {
 } from "./interfaces.js";
 export { OdspClient } from "./odspClient.js";
 export { type IOdspTokenProvider } from "./token.js";
+export {
+	createOdspServiceClient,
+	OdspServiceContainer,
+	type OdspServiceOptions,
+} from "./odspService.js";
+export {
+	getOdspContainerAudience,
+	getOdspContainerExtensionStore,
+} from "./odspServiceContainerHelpers.js";

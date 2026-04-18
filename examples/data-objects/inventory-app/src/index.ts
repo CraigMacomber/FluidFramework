@@ -3,9 +3,16 @@
  * Licensed under the MIT License.
  */
 
+import {
+	createAzureServiceClient,
+	// eslint-disable-next-line import-x/no-internal-modules
+} from "@fluidframework/azure-client/internal";
 import { toPropTreeNode } from "@fluidframework/react/alpha";
-// eslint-disable-next-line import-x/no-internal-modules
-import { createTinyliciousServiceClient } from "@fluidframework/tinylicious-driver/internal";
+import {
+	InsecureTinyliciousTokenProvider,
+	createTinyliciousServiceClient,
+	// eslint-disable-next-line import-x/no-internal-modules
+} from "@fluidframework/tinylicious-driver/internal";
 import { createElement } from "react";
 // eslint-disable-next-line import-x/no-internal-modules
 import { createRoot } from "react-dom/client";
@@ -14,7 +21,16 @@ import { inventoryDataStoreKind } from "./inventoryList.js";
 import type { Inventory } from "./schema.js";
 import { MainView } from "./view/index.js";
 
-const service = createTinyliciousServiceClient();
+const service =
+	process.env.FLUID_CLIENT === "azure"
+		? createAzureServiceClient({
+				connection: {
+					type: "local",
+					endpoint: "http://localhost:7071",
+					tokenProvider: new InsecureTinyliciousTokenProvider(),
+				},
+			})
+		: createTinyliciousServiceClient();
 
 const id = location.hash.slice(1);
 let root: Inventory;
