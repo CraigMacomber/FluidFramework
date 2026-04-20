@@ -240,7 +240,7 @@ export class EphemeralServiceContainer<TData>
 		await this.container.attach(createLocalResolverCreateNewRequest(documentId));
 
 		if (this.container.resolvedUrl === undefined) {
-			throw new Error("Resolved Url unexpectedly missing!");
+			throw new Error("Resolved URL unexpectedly missing!");
 		}
 		this.id = this.container.resolvedUrl.id;
 

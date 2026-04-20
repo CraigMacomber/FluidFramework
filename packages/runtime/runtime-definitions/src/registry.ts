@@ -21,7 +21,7 @@ export type Registry<T> = (type: string) => T;
  * A strongly typed key for a {@link Registry}.
  * Use with {@link registryLookup}.
  * @remarks
- * Used to look up a `T` in a `Registry<T>`, and produce an `F` from it.
+ * Used to look up a `T` in a `Registry<T>`, and produce a `TOut` from it.
  * @privateRemarks
  * This is currently input and sealed, meaning effectively type erased since the design might change.
  * @input

@@ -993,7 +993,7 @@ export interface SharedObjectKind<out TSharedObject = unknown>
  * @remarks
  * This is implemented by {@link SharedObjectKind}, but alternative implementations can be used if needed.
  *
- * If lazy loading, and therefor want a key that doers not eagerly load the DataStoreKind, an alternative key can be implemented.
+ * If lazy loading, and therefore want a key that does not eagerly load the {@link SharedObjectKind}, an alternative {@link SharedObjectKey} can be implemented.
  * @privateRemarks
  * TODO: A built in common pattern for the lazy key case should be provided.
  * TODO: this same key pattern should be applied to SharedObjectKind.
@@ -1036,10 +1036,10 @@ export function createSharedObjectKind<TSharedObject>(
 				return resultFinal;
 			}
 			if (value.type === result.type) {
-				throw new UsageError(`Conflicting DataStoreKinds with same type: ${result.type}`);
+				throw new UsageError(`Conflicting SharedObjectKinds with same type: ${result.type}`);
 			}
 			throw new UsageError(
-				`Mismatched DataStoreKind type. Expected: ${result.type}, got: ${value.type}`,
+				`Mismatched SharedObjectKind type. Expected: ${result.type}, got: ${value.type}`,
 			);
 		},
 	};
