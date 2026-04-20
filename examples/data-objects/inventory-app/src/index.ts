@@ -3,16 +3,14 @@
  * Licensed under the MIT License.
  */
 
-import {
-	createAzureServiceClient,
-	// eslint-disable-next-line import-x/no-internal-modules
-} from "@fluidframework/azure-client/internal";
+import { createAzureServiceClient } from "@fluidframework/azure-client/alpha";
 import { toPropTreeNode } from "@fluidframework/react/alpha";
 import {
 	InsecureTinyliciousTokenProvider,
 	createTinyliciousServiceClient,
-	// eslint-disable-next-line import-x/no-internal-modules
-} from "@fluidframework/tinylicious-driver/internal";
+} from "@fluidframework/tinylicious-driver/alpha";
+import type { TreeView } from "fluid-framework";
+import type { FluidContainerAttached } from "fluid-framework/alpha";
 import { createElement } from "react";
 // eslint-disable-next-line import-x/no-internal-modules
 import { createRoot } from "react-dom/client";
@@ -33,16 +31,17 @@ const service =
 		: createTinyliciousServiceClient();
 
 const id = location.hash.slice(1);
-let root: Inventory;
+let attached: FluidContainerAttached<TreeView<typeof Inventory>>;
+
 if (id.length > 0) {
-	const container = await service.loadContainer(id, inventoryDataStoreKind);
-	root = container.data.root;
+	attached = await service.loadContainer(id, inventoryDataStoreKind);
 } else {
 	const container = await service.createContainer(inventoryDataStoreKind);
-	const attached = await container.attach();
+	attached = await container.attach();
 	location.hash = attached.id;
-	root = attached.data.root;
 }
+
+const root: Inventory = attached.data.root;
 
 const rootEl = document.querySelector("#content");
 if (rootEl === null) {

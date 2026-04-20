@@ -11,6 +11,16 @@ export function createTinyliciousServiceClient(options?: TinyliciousServiceOptio
 export function getTinyliciousContainerAudience(container: FluidContainerAttached): IAudience;
 
 // @alpha
+export class InsecureTinyliciousTokenProvider implements ITokenProvider {
+    constructor(
+    scopes?: ScopeType[] | undefined);
+    // (undocumented)
+    fetchOrdererToken(tenantId: string, documentId?: string): Promise<ITokenResponse>;
+    // (undocumented)
+    fetchStorageToken(tenantId: string, documentId: string): Promise<ITokenResponse>;
+}
+
+// @alpha
 export class TinyliciousServiceContainer<TData> implements FluidContainerWithService<TData> {
     // (undocumented)
     attach(): Promise<FluidContainerAttached<TData>>;

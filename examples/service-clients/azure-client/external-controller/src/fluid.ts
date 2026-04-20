@@ -6,6 +6,8 @@
 import {
 	createAzureServiceClient,
 	getAzureContainerAudience,
+} from "@fluidframework/azure-client/alpha";
+import {
 	getAzureContainerExtensionStore,
 	// eslint-disable-next-line import-x/no-internal-modules
 } from "@fluidframework/azure-client/internal";
@@ -13,6 +15,8 @@ import {
 	InsecureTinyliciousTokenProvider,
 	createTinyliciousServiceClient,
 	getTinyliciousContainerAudience,
+} from "@fluidframework/tinylicious-driver/alpha";
+import {
 	getTinyliciousContainerExtensionStore,
 	// eslint-disable-next-line import-x/no-internal-modules
 } from "@fluidframework/tinylicious-driver/internal";

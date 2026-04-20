@@ -3,10 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import {
-	createOdspServiceClient,
-	// eslint-disable-next-line import-x/no-internal-modules
-} from "@fluidframework/odsp-client/internal";
+import { createOdspServiceClient } from "@fluidframework/odsp-client/alpha";
 import { treeDataStoreKind } from "fluid-framework/alpha";
 
 import { connectionConfig } from "./clientProps.js";

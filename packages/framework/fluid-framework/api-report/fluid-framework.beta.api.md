@@ -778,6 +778,9 @@ export type MapNodeInsertableData<T extends ImplicitAllowedTypes> = Iterable<rea
 // @public
 export type MemberChangedListener<M extends IMember> = (clientId: string, member: M) => void;
 
+// @beta @input
+export type MinimumVersionForCollab = `${1 | 2}.${bigint}.${bigint}` | `${1 | 2}.${bigint}.${bigint}-${string}`;
+
 // @public
 export type Myself<M extends IMember = IMember> = M & {
     readonly currentConnection: string;
@@ -849,6 +852,12 @@ export interface ReadonlyArrayNode<out T = TreeNode | TreeLeafValue> extends Rea
 
 // @beta @system
 export type RecordNodeInsertableData<T extends ImplicitAllowedTypes> = RestrictiveStringRecord<InsertableTreeNodeFromImplicitAllowedTypes<T>>;
+
+// @public @sealed @input
+export interface RegistryKey<TOut, TIn = unknown> {
+    adapt(value: TIn): TOut;
+    readonly type: string;
+}
 
 // @public
 export type ReplaceIEventThisPlaceHolder<L extends any[], TThis> = L extends any[] ? {

@@ -96,6 +96,24 @@ export type {
 	SharedObjectKey,
 	DataStoreContext,
 } from "@fluidframework/shared-object-base/internal";
+export type {
+	DataStoreCreator,
+	DataStoreKey,
+	DataStoreKind,
+	DataStoreRegistry,
+	FluidContainer,
+	FluidContainerAttached,
+	FluidContainerWithService,
+	MinimumVersionForCollab,
+	Registry,
+	RegistryKey,
+	ServiceClient,
+	ServiceOptions,
+} from "@fluidframework/runtime-definitions/internal";
+export {
+	basicKey,
+	registryLookup,
+} from "@fluidframework/runtime-definitions/internal";
 
 // End of basic public+beta+alpha exports - nothing above this line should
 // depend on an /internal path.

@@ -183,6 +183,9 @@ export enum AttachState {
     Detached = "Detached"
 }
 
+// @alpha
+export function basicKey<T>(type: string): RegistryKey<T, T>;
+
 // @alpha @sealed
 export type ChangeMetadata = LocalChangeMetadata | RemoteChangeMetadata;
 
@@ -310,6 +313,18 @@ export function createTreeIndex<TFieldSchema extends ImplicitFieldSchema, TKey e
 export interface DataStoreContext extends SharedObjectCreator {
 }
 
+// @alpha @sealed
+export interface DataStoreCreator {
+    createDataStore<T>(kind: DataStoreKey<T>): Promise<T>;
+}
+
+// @alpha @input
+export type DataStoreKey<T, TAll = unknown> = RegistryKey<Promise<DataStoreKind<T>>, Promise<DataStoreKind<TAll>>>;
+
+// @alpha @sealed
+export interface DataStoreKind<out T = unknown> extends DataStoreKey<T>, ErasedBaseType<readonly ["DataStoreKind", T]> {
+}
+
 // @alpha
 export function dataStoreKind<T, TRoot extends IFluidLoadable>(options: DataStoreOptions<TRoot, T>): DataStoreKind<T>;
 
@@ -320,6 +335,9 @@ export interface DataStoreOptions<in out TRoot extends IFluidLoadable, out TOutp
     readonly type: string;
     view(root: TRoot, context: DataStoreContext): Promise<TOutput>;
 }
+
+// @alpha @input
+export type DataStoreRegistry<out T = unknown> = Registry<Promise<DataStoreKind<T>>>;
 
 // @alpha
 export function decodeSchemaCompatibilitySnapshot(encodedSchema: JsonCompatibleReadOnly, validator?: FormatValidator): SimpleTreeSchema;
@@ -512,6 +530,22 @@ export const FluidClientVersion: {
     readonly v2_74: "2.74.0";
     readonly v2_80: "2.80.0";
 };
+
+// @alpha @sealed
+export interface FluidContainer<TData = unknown> extends DataStoreCreator {
+    readonly data: TData;
+    readonly id?: string | undefined;
+}
+
+// @alpha @sealed
+export interface FluidContainerAttached<T = unknown> extends FluidContainer<T> {
+    readonly id: string;
+}
+
+// @alpha @sealed
+export interface FluidContainerWithService<T = unknown> extends FluidContainer<T> {
+    attach(): Promise<FluidContainerAttached<T>>;
+}
 
 // @beta @sealed
 export interface FluidIterable<T> {
@@ -1261,6 +1295,9 @@ export const MapNodeSchema: {
 // @public
 export type MemberChangedListener<M extends IMember> = (clientId: string, member: M) => void;
 
+// @beta @input
+export type MinimumVersionForCollab = `${1 | 2}.${bigint}.${bigint}` | `${1 | 2}.${bigint}.${bigint}-${string}`;
+
 // @public
 export type Myself<M extends IMember = IMember> = M & {
     readonly currentConnection: string;
@@ -1422,6 +1459,18 @@ export type RecordNodeSchema<TName extends string = string, T extends ImplicitAl
 export const RecordNodeSchema: {
     readonly [Symbol.hasInstance]: (value: TreeNodeSchema) => value is RecordNodeSchema<string, ImplicitAllowedTypes, true, unknown>;
 };
+
+// @alpha @input
+export type Registry<T> = (type: string) => T;
+
+// @public @sealed @input
+export interface RegistryKey<TOut, TIn = unknown> {
+    adapt(value: TIn): TOut;
+    readonly type: string;
+}
+
+// @alpha
+export function registryLookup<TOut, TIn>(registry: Registry<TIn>, key: RegistryKey<TOut, TIn>): TOut;
 
 // @alpha @sealed
 export interface RemoteChangeMetadata extends CommitMetadata {
@@ -1661,6 +1710,20 @@ export class SchemaUpgrade {
 
 // @public @system
 type ScopedSchemaName<TScope extends string | undefined, TName extends number | string> = TScope extends undefined ? `${TName}` : `${TScope}.${TName}`;
+
+// @alpha @sealed
+export interface ServiceClient {
+    createContainer<T>(root: DataStoreKind<T>): Promise<FluidContainerWithService<T>>;
+    // (undocumented)
+    createContainer<T>(root: DataStoreKey<T>, registry: DataStoreRegistry): Promise<FluidContainerWithService<T>>;
+    loadContainer<T>(id: string, root: DataStoreKind<T> | DataStoreRegistry<T>): Promise<FluidContainerAttached<T>>;
+}
+
+// @alpha @input
+export interface ServiceOptions {
+    // (undocumented)
+    readonly minVersionForCollab: MinimumVersionForCollab;
+}
 
 // @alpha @sealed
 export interface SharedObjectCreator<TConstraint = IFluidLoadable> {
