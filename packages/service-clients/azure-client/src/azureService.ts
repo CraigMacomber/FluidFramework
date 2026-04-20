@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import type { IAudience, IContainer } from "@fluidframework/container-definitions/internal";
+import type { IContainer } from "@fluidframework/container-definitions/internal";
 import {
 	createDetachedContainer,
 	loadExistingContainer,
@@ -24,7 +24,6 @@ import {
 } from "@fluidframework/driver-utils/internal";
 import { RouterliciousDocumentServiceFactory } from "@fluidframework/routerlicious-driver/internal";
 import type {
-	DataStoreKey,
 	DataStoreKind,
 	DataStoreRegistry,
 	FluidContainerAttached,
@@ -33,11 +32,7 @@ import type {
 	Registry,
 	ServiceClient,
 } from "@fluidframework/runtime-definitions/internal";
-import {
-	DataStoreKindImplementation,
-	registryLookup,
-	ServiceContainerBase,
-} from "@fluidframework/runtime-definitions/internal";
+import { ServiceContainerBase } from "@fluidframework/runtime-definitions/internal";
 import {
 	UsageError,
 	wrapConfigProviderWithDefaults,
@@ -137,7 +132,7 @@ function makeContainerLoaderOptions(options: AzureServiceOptions): {
  * @internal
  */
 export class AzureServiceContainer<TData>
-	extends ServiceContainerBase<TData>
+	extends ServiceContainerBase<TData, AzureServiceOptions>
 	implements FluidContainerWithService<TData>
 {
 	public static async createDetached<T>(
@@ -195,30 +190,13 @@ export class AzureServiceContainer<TData>
 	}
 
 	private constructor(
-		public readonly registry: Registry<Promise<DataStoreKind<TData>>>,
-		public readonly options: AzureServiceOptions,
-		public readonly container: IContainer,
-		public readonly data: TData,
-		public id: string | undefined,
+		registry: Registry<Promise<DataStoreKind<TData>>>,
+		options: AzureServiceOptions,
+		container: IContainer,
+		data: TData,
+		id: string | undefined,
 	) {
-		super();
-	}
-
-	public get audience(): IAudience {
-		return this.container.audience;
-	}
-
-	public async createDataStore<T>(key: DataStoreKey<T>): Promise<T> {
-		const kind = await registryLookup(this.registry, key);
-		DataStoreKindImplementation.narrowGeneric(kind);
-
-		const containerRuntime = (this.container as unknown as { runtime: ContainerRuntime })
-			.runtime;
-		const context = containerRuntime.createDetachedDataStore([kind.type]);
-		const channel = await kind.instantiateDataStore(context, false);
-		const dataStore = await context.attachRuntime(kind, channel);
-		const entryPoint = await dataStore.entryPoint.get();
-		return entryPoint as T;
+		super(registry, options, container, data, id);
 	}
 
 	public async attach(): Promise<FluidContainerAttached<TData>> {

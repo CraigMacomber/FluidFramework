@@ -91,9 +91,6 @@ export type CompatibilityMode = "1" | "2";
 // @alpha
 export function createAzureServiceClient(options: AzureServiceOptions): ServiceClient;
 
-// @alpha
-export function getAzureContainerAudience(container: FluidContainerAttached): IAudience;
-
 // @public
 export type IAzureAudience = IServiceAudience<AzureMember>;
 

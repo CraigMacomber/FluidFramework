@@ -4,7 +4,6 @@
  */
 
 import type {
-	IAudience,
 	ICodeDetailsLoader,
 	IContainer,
 	IContainerContext,
@@ -237,7 +236,7 @@ function makeContainerLoaderOptions(options: TinyliciousServiceOptions): {
  * @internal
  */
 export class TinyliciousServiceContainer<TData>
-	extends ServiceContainerBase<TData>
+	extends ServiceContainerBase<TData, TinyliciousServiceOptions>
 	implements FluidContainerWithService<TData>
 {
 	public static async createDetached<T>(
@@ -289,30 +288,13 @@ export class TinyliciousServiceContainer<TData>
 	}
 
 	private constructor(
-		public readonly registry: Registry<Promise<DataStoreKind<TData>>>,
-		public readonly options: TinyliciousServiceOptions,
-		public readonly container: IContainer,
-		public readonly data: TData,
-		public id: string | undefined,
+		registry: Registry<Promise<DataStoreKind<TData>>>,
+		options: TinyliciousServiceOptions,
+		container: IContainer,
+		data: TData,
+		id: string | undefined,
 	) {
-		super();
-	}
-
-	public get audience(): IAudience {
-		return this.container.audience;
-	}
-
-	public async createDataStore<T>(key: DataStoreKey<T>): Promise<T> {
-		const kind = await registryLookup(this.registry, key);
-		DataStoreKindImplementation.narrowGeneric(kind);
-
-		const containerRuntime = (this.container as unknown as { runtime: ContainerRuntime })
-			.runtime;
-		const context = containerRuntime.createDetachedDataStore([kind.type]);
-		const channel = await kind.instantiateDataStore(context, false);
-		const dataStore = await context.attachRuntime(kind, channel);
-		const entryPoint = await dataStore.entryPoint.get();
-		return entryPoint as T;
+		super(registry, options, container, data, id);
 	}
 
 	public async attach(): Promise<FluidContainerAttached<TData>> {

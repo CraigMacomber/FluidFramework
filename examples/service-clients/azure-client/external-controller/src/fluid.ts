@@ -3,10 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import {
-	createAzureServiceClient,
-	getAzureContainerAudience,
-} from "@fluidframework/azure-client/alpha";
+import { createAzureServiceClient } from "@fluidframework/azure-client/alpha";
 import {
 	getAzureContainerExtensionStore,
 	// eslint-disable-next-line import-x/no-internal-modules
@@ -14,7 +11,6 @@ import {
 import {
 	InsecureTinyliciousTokenProvider,
 	createTinyliciousServiceClient,
-	getTinyliciousContainerAudience,
 } from "@fluidframework/tinylicious-driver/alpha";
 import {
 	getTinyliciousContainerExtensionStore,
@@ -59,12 +55,6 @@ export const service =
 				},
 			})
 		: createTinyliciousServiceClient();
-
-/**
- * Gets the audience for a container created by the active service client.
- */
-export const getContainerAudience =
-	fluidClient === "azure" ? getAzureContainerAudience : getTinyliciousContainerAudience;
 
 /**
  * Gets the extension store for a container created by the active service client.

@@ -113,7 +113,9 @@ export type {
 export {
 	basicKey,
 	registryLookup,
-	getContainerAudience,
+	// Due to this currently referencing several existing public types we do not want to stablish as reexports from here,
+	// do not reexport getContainerAudience for now.
+	// getContainerAudience,
 } from "@fluidframework/runtime-definitions/internal";
 
 // End of basic public+beta+alpha exports - nothing above this line should

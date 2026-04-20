@@ -4,6 +4,7 @@
  */
 
 import type { IAudience } from "@fluidframework/container-definitions";
+import type { IContainer } from "@fluidframework/container-definitions/internal";
 import {
 	type ErasedBaseType,
 	ErasedTypeImplementation,
@@ -11,9 +12,13 @@ import {
 import { UsageError } from "@fluidframework/telemetry-utils/internal";
 
 import type { MinimumVersionForCollab } from "./compatibilityDefinitions.js";
-import type { IFluidDataStoreContext, IFluidDataStoreChannel } from "./dataStoreContext.js";
+import type {
+	IContainerRuntimeBase,
+	IFluidDataStoreContext,
+	IFluidDataStoreChannel,
+} from "./dataStoreContext.js";
 import type { IFluidDataStoreFactory } from "./dataStoreFactory.js";
-import type { Registry, RegistryKey } from "./registry.js";
+import { registryLookup, type Registry, type RegistryKey } from "./registry.js";
 
 /**
  * Options for configuring a {@link ServiceClient}.
@@ -271,28 +276,66 @@ export interface ServiceClient {
  *
  * @internal
  */
-export abstract class ServiceContainerBase<TData>
+export abstract class ServiceContainerBase<TData, TOptions = unknown>
 	extends ErasedTypeImplementation<FluidContainer<TData>>
 	implements FluidContainer<TData>
 {
-	protected constructor() {
+	protected constructor(
+		public readonly registry: Registry<Promise<DataStoreKind<TData>>>,
+		public readonly options: TOptions,
+		public readonly container: IContainer,
+		public readonly data: TData,
+		public id: string | undefined,
+	) {
 		super();
 	}
 
-	public abstract readonly id: string | undefined;
-	public abstract readonly data: TData;
-	public abstract createDataStore<T>(kind: DataStoreKey<T>): Promise<T>;
+	public get audience(): IAudience {
+		return this.container.audience;
+	}
 
-	public abstract get audience(): IAudience;
+	public async createDataStore<T>(key: DataStoreKey<T>): Promise<T> {
+		const kind = await registryLookup(this.registry, key);
+		DataStoreKindImplementation.narrowGeneric(kind);
+
+		// TODO: Do something better
+		const containerRuntime = (this.container as unknown as { runtime: IContainerRuntimeBase })
+			.runtime;
+
+		// TODO: Do something better
+		const context = containerRuntime.createDetachedDataStore([kind.type]);
+		const channel = await kind.instantiateDataStore(context, false);
+		const dataStore = await context.attachRuntime(kind, channel);
+		const entryPoint = await dataStore.entryPoint.get();
+		return entryPoint as T;
+	}
 }
 
 /**
- * Gets the {@link @fluidframework/container-definitions#IAudience} from a Fluid container
+ * All clients connected to the op stream, both read-only and read/write.
+ * @remarks
+ * Currently just {@link @fluidframework/container-definitions#IAudience}, but may diverge before stabilizing.
+ * @privateRemarks
+ * This is currently just an alias for IAudience, but it is defined separately to allow for:
+ * 1. Following the no I prefix naming convention.
+ * 2. The possibility of diverging from IAudience in the future if desired.
+ * 3. Make it easy for the reexport from fluid-framework to be `@alpha` so the name is not locked down prematurely.
+ * @sealed @alpha
+ */
+export type Audience = IAudience;
+
+/**
+ * Gets the {@link Audience} from a Fluid container
  * created by any {@link ServiceClient}.
- *
+ * @privateRemarks
+ * This is exposed via a free function rather than as a property of FluidContainerAttached
+ * for a few minor reasons:
+ * 1. This allows stabilizing the FluidContainerAttached API independently committing to how we want to expose the audience.
+ * 2. This demonstrates the pattern of how we can have possible less stable APIs to expose service specific features without them being part of the core FluidContainer API.
+ * This will be important for both new feature stabilization, and also exposing anything needed for legacy interop.
  * @alpha
  */
-export function getContainerAudience(container: FluidContainerAttached): IAudience {
+export function getContainerAudience(container: FluidContainerAttached): Audience {
 	ServiceContainerBase.narrow(container);
 	return container.audience;
 }
@@ -311,7 +354,7 @@ export function getContainerAudience(container: FluidContainerAttached): IAudien
  *
  * Additionally it seems like the service must be provided at creation time since IContainer.attach exists and does not take the service client implementation.
  *
- * Therefor it is unclear if this proposed API is actually practical to implement.
+ * Therefore it is unclear if this proposed API is actually practical to implement.
  *
  * If it is impractical, a workaround could be provided for the shorter term as an alternative async method on the ServiceClient.
  *

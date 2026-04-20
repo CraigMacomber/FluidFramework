@@ -8,9 +8,6 @@
 export function createTinyliciousServiceClient(options?: TinyliciousServiceOptions): ServiceClient;
 
 // @alpha
-export function getTinyliciousContainerAudience(container: FluidContainerAttached): IAudience;
-
-// @alpha
 export class InsecureTinyliciousTokenProvider implements ITokenProvider {
     constructor(
     scopes?: ScopeType[] | undefined);

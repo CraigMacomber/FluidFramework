@@ -19,6 +19,9 @@ export interface AttributionInfo {
 // @beta @legacy
 export type AttributionKey = OpAttributionKey | DetachedAttributionKey | LocalAttributionKey;
 
+// @alpha @sealed
+export type Audience = IAudience;
+
 // @alpha
 export function basicKey<T>(type: string): RegistryKey<T, T>;
 
@@ -102,7 +105,7 @@ export enum FlushMode {
 }
 
 // @alpha
-export function getContainerAudience(container: FluidContainerAttached): IAudience;
+export function getContainerAudience(container: FluidContainerAttached): Audience;
 
 // @beta @legacy
 export interface IAttachMessage {

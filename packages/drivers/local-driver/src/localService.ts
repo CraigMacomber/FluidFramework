@@ -5,7 +5,6 @@
 
 import {
 	ConnectionState,
-	type IAudience,
 	type IContainer,
 } from "@fluidframework/container-definitions/internal";
 import {
@@ -27,16 +26,11 @@ import type {
 	ServiceClient,
 	FluidContainerAttached,
 	DataStoreKind,
-	DataStoreKey,
 	FluidContainerWithService,
 	DataStoreRegistry,
 	Registry,
 } from "@fluidframework/runtime-definitions/internal";
-import {
-	DataStoreKindImplementation,
-	registryLookup,
-	ServiceContainerBase,
-} from "@fluidframework/runtime-definitions/internal";
+import { ServiceContainerBase } from "@fluidframework/runtime-definitions/internal";
 import {
 	LocalDeltaConnectionServer,
 	type ILocalDeltaConnectionServer,
@@ -168,7 +162,7 @@ let documentIdCounter = 0;
  * @internal
  */
 export class EphemeralServiceContainer<TData>
-	extends ServiceContainerBase<TData>
+	extends ServiceContainerBase<TData, ServiceOptions>
 	implements FluidContainerWithService<TData>
 {
 	public static async createDetached<T>(
@@ -225,33 +219,15 @@ export class EphemeralServiceContainer<TData>
 	}
 
 	private constructor(
-		public readonly registry: Registry<Promise<DataStoreKind<TData>>>,
-		public readonly options: ServiceOptions,
-		public readonly container: IContainer,
-		public readonly data: TData,
-		public id: string | undefined,
+		registry: Registry<Promise<DataStoreKind<TData>>>,
+		options: ServiceOptions,
+		container: IContainer,
+		data: TData,
+		id: string | undefined,
 	) {
-		super();
+		super(registry, options, container, data, id);
 		containers.push(this);
 		updateContainers();
-	}
-
-	public get audience(): IAudience {
-		return this.container.audience;
-	}
-
-	public async createDataStore<T>(key: DataStoreKey<T>): Promise<T> {
-		const kind = await registryLookup(this.registry, key);
-		DataStoreKindImplementation.narrowGeneric(kind);
-
-		// TODO: Do something better
-		const containerRuntime = (this.container as any).runtime as ContainerRuntime;
-		// TODO: Do something better
-		const context = containerRuntime.createDetachedDataStore([kind.type]);
-		const channel = await kind.instantiateDataStore(context, false);
-		const dataStore = await context.attachRuntime(kind, channel);
-		const entryPoint = await dataStore.entryPoint.get();
-		return entryPoint as T;
 	}
 
 	public async attach(): Promise<FluidContainerAttached<TData>> {

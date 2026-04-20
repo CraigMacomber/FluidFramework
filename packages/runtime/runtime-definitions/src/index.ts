@@ -123,6 +123,7 @@ export type {
 	DataStoreRegistry,
 } from "./serviceClient.js";
 
+export type { Audience } from "./serviceClient.js";
 export {
 	DataStoreKindImplementation,
 	ServiceContainerBase,

@@ -650,9 +650,6 @@ export type FormatVersion = number | string | undefined;
 export function generateSchemaFromSimpleSchema(simple: SimpleTreeSchema): TreeSchema;
 
 // @alpha
-export function getContainerAudience(container: FluidContainerAttached): IAudience;
-
-// @alpha
 export function getJsonSchema(schema: ImplicitAllowedTypes, options: Required<TreeSchemaEncodingOptions>): JsonTreeSchema;
 
 // @public

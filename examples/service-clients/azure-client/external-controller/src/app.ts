@@ -5,14 +5,13 @@
 
 // eslint-disable-next-line import-x/no-internal-modules
 import { getPresenceViaExtensionStore } from "@fluidframework/presence/internal";
+// eslint-disable-next-line import-x/no-internal-modules
+import type { Audience } from "@fluidframework/runtime-definitions/internal";
+// eslint-disable-next-line import-x/no-internal-modules
+import { getContainerAudience } from "@fluidframework/runtime-definitions/internal";
 
 import { DiceRollerController, type DieValue } from "./controller.js";
-import {
-	diceRollerDataStoreKind,
-	getContainerAudience,
-	getContainerExtensionStore,
-	service,
-} from "./fluid.js";
+import { diceRollerDataStoreKind, getContainerExtensionStore, service } from "./fluid.js";
 import { buildDicePresence } from "./presence.js";
 import type { TwoDiceApp } from "./schema.js";
 import { makeAppView } from "./view.js";
@@ -27,7 +26,7 @@ import { makeAppView } from "./view.js";
 function setupApp(
 	appModel: TwoDiceApp,
 	presence: ReturnType<typeof getPresenceViaExtensionStore>,
-	audience: ReturnType<typeof getContainerAudience>,
+	audience: Audience,
 ): void {
 	// Biome insist on no semicolon - https://dev.azure.com/fluidframework/internal/_workitems/edit/9083
 	const lastRoll: { die1?: DieValue; die2?: DieValue } = {};

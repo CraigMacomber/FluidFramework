@@ -7,9 +7,6 @@
 // @alpha
 export function createOdspServiceClient(options: OdspServiceOptions): ServiceClient;
 
-// @alpha
-export function getOdspContainerAudience(container: FluidContainerAttached): IAudience;
-
 // @beta
 export type IOdspAudience = IServiceAudience<OdspMember>;
 

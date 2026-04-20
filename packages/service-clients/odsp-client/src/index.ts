@@ -31,7 +31,4 @@ export {
 	OdspServiceContainer,
 	type OdspServiceOptions,
 } from "./odspService.js";
-export {
-	getOdspContainerAudience,
-	getOdspContainerExtensionStore,
-} from "./odspServiceContainerHelpers.js";
+export { getOdspContainerExtensionStore } from "./odspServiceContainerHelpers.js";
