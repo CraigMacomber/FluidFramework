@@ -4,14 +4,14 @@
  */
 
 // eslint-disable-next-line import-x/no-internal-modules
-import { getPresenceViaExtensionStore } from "@fluidframework/presence/internal";
+import { getPresenceFromContainer } from "@fluidframework/presence/internal";
 // eslint-disable-next-line import-x/no-internal-modules
 import type { Audience } from "@fluidframework/runtime-definitions/internal";
 // eslint-disable-next-line import-x/no-internal-modules
 import { getContainerAudience } from "@fluidframework/runtime-definitions/internal";
 
 import { DiceRollerController, type DieValue } from "./controller.js";
-import { diceRollerDataStoreKind, getContainerExtensionStore, service } from "./fluid.js";
+import { diceRollerDataStoreKind, service } from "./fluid.js";
 import { buildDicePresence } from "./presence.js";
 import type { TwoDiceApp } from "./schema.js";
 import { makeAppView } from "./view.js";
@@ -25,7 +25,7 @@ import { makeAppView } from "./view.js";
  */
 function setupApp(
 	appModel: TwoDiceApp,
-	presence: ReturnType<typeof getPresenceViaExtensionStore>,
+	presence: ReturnType<typeof getPresenceFromContainer>,
 	audience: Audience,
 ): void {
 	// Biome insist on no semicolon - https://dev.azure.com/fluidframework/internal/_workitems/edit/9083
@@ -78,7 +78,7 @@ async function start(): Promise<void> {
 		document.title = attached.id;
 		setupApp(
 			attached.data.root,
-			getPresenceViaExtensionStore(getContainerExtensionStore(attached)),
+			getPresenceFromContainer(attached),
 			getContainerAudience(attached),
 		);
 	} else {
@@ -87,7 +87,7 @@ async function start(): Promise<void> {
 		document.title = id;
 		setupApp(
 			container.data.root,
-			getPresenceViaExtensionStore(getContainerExtensionStore(container)),
+			getPresenceFromContainer(container),
 			getContainerAudience(container),
 		);
 	}

@@ -5,17 +5,9 @@
 
 import { createAzureServiceClient } from "@fluidframework/azure-client/alpha";
 import {
-	getAzureContainerExtensionStore,
-	// eslint-disable-next-line import-x/no-internal-modules
-} from "@fluidframework/azure-client/internal";
-import {
 	InsecureTinyliciousTokenProvider,
 	createTinyliciousServiceClient,
 } from "@fluidframework/tinylicious-driver/alpha";
-import {
-	getTinyliciousContainerExtensionStore,
-	// eslint-disable-next-line import-x/no-internal-modules
-} from "@fluidframework/tinylicious-driver/internal";
 import { TreeViewConfiguration } from "fluid-framework";
 import { treeDataStoreKind } from "fluid-framework/alpha";
 
@@ -55,11 +47,3 @@ export const service =
 				},
 			})
 		: createTinyliciousServiceClient();
-
-/**
- * Gets the extension store for a container created by the active service client.
- */
-export const getContainerExtensionStore =
-	fluidClient === "azure"
-		? getAzureContainerExtensionStore
-		: getTinyliciousContainerExtensionStore;

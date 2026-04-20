@@ -13,9 +13,11 @@ import { assert } from "@fluidframework/core-utils/internal";
 import type { IFluidContainer } from "@fluidframework/fluid-static";
 import { getPresenceAlpha } from "@fluidframework/fluid-static/internal";
 import type {
+	FluidContainerAttached,
 	FluidDataStoreContextInternal,
 	IFluidDataStoreContext,
 } from "@fluidframework/runtime-definitions/internal";
+import { ServiceContainerBase } from "@fluidframework/runtime-definitions/internal";
 
 /**
  * Acquire a {@link Presence} from a Fluid Container
@@ -49,15 +51,15 @@ export function getPresenceFromDataStoreContext(context: IFluidDataStoreContext)
 }
 
 /**
- * Get {@link Presence} from a {@link @fluidframework/container-runtime-definitions#ContainerExtensionStore}.
+ * Get {@link PresenceWithNotifications} from a {@link @fluidframework/runtime-definitions#FluidContainerAttached}
+ * obtained from any {@link @fluidframework/runtime-definitions#ServiceClient}.
  *
- * @remarks
- * Use this to access presence from a Fluid container obtained via a {@link @fluidframework/runtime-definitions#ServiceClient}.
- *
- * @internal
+ * @alpha
  */
-export function getPresenceViaExtensionStore(
-	extensionStore: ContainerExtensionStore,
+export function getPresenceFromContainer(
+	container: FluidContainerAttached,
 ): PresenceWithNotifications {
-	return extensionStore.acquireExtension(extensionId, ContainerPresenceFactory);
+	ServiceContainerBase.narrow(container);
+	const runtime = container.getRuntime() as unknown as ContainerExtensionStore;
+	return runtime.acquireExtension(extensionId, ContainerPresenceFactory);
 }

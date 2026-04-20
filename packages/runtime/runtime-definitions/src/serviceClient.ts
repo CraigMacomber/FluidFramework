@@ -294,13 +294,16 @@ export abstract class ServiceContainerBase<TData, TOptions = unknown>
 		return this.container.audience;
 	}
 
+	public getRuntime(): IContainerRuntimeBase {
+		// TODO: Do something better
+		const container = this.container as IContainerWithRuntime;
+		return container.runtime;
+	}
+
 	public async createDataStore<T>(key: DataStoreKey<T>): Promise<T> {
 		const kind = await registryLookup(this.registry, key);
 		DataStoreKindImplementation.narrowGeneric(kind);
-
-		// TODO: Do something better
-		const containerRuntime = (this.container as unknown as { runtime: IContainerRuntimeBase })
-			.runtime;
+		const containerRuntime = this.getRuntime();
 
 		// TODO: Do something better
 		const context = containerRuntime.createDetachedDataStore([kind.type]);
@@ -309,6 +312,10 @@ export abstract class ServiceContainerBase<TData, TOptions = unknown>
 		const entryPoint = await dataStore.entryPoint.get();
 		return entryPoint as T;
 	}
+}
+
+interface IContainerWithRuntime extends IContainer {
+	readonly runtime: IContainerRuntimeBase;
 }
 
 /**

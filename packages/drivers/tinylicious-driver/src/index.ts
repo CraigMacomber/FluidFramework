@@ -10,7 +10,6 @@ export {
 	defaultTinyliciousPort,
 	InsecureTinyliciousUrlResolver,
 } from "./insecureTinyliciousUrlResolver.js";
-export { getTinyliciousContainerExtensionStore } from "./tinyliciousContainerServices.js";
 export {
 	createTinyliciousServiceClient,
 	TinyliciousServiceContainer,

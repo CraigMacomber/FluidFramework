@@ -31,4 +31,3 @@ export {
 	OdspServiceContainer,
 	type OdspServiceOptions,
 } from "./odspService.js";
-export { getOdspContainerExtensionStore } from "./odspServiceContainerHelpers.js";

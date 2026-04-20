@@ -15,7 +15,6 @@ export {
 	AzureServiceContainer,
 	type AzureServiceOptions,
 } from "./azureService.js";
-export { getAzureContainerExtensionStore } from "./azureContainerServices.js";
 export type {
 	AzureClientProps,
 	AzureClientPropsInternal,
