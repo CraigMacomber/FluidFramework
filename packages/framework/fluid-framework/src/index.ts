@@ -113,6 +113,7 @@ export type {
 export {
 	basicKey,
 	registryLookup,
+	getContainerAudience,
 } from "@fluidframework/runtime-definitions/internal";
 
 // End of basic public+beta+alpha exports - nothing above this line should

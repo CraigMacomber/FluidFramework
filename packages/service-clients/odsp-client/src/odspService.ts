@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import type { IContainer } from "@fluidframework/container-definitions/internal";
+import type { IAudience, IContainer } from "@fluidframework/container-definitions/internal";
 import {
 	createDetachedContainer,
 	loadExistingContainer,
@@ -43,6 +43,7 @@ import type {
 import {
 	DataStoreKindImplementation,
 	registryLookup,
+	ServiceContainerBase,
 } from "@fluidframework/runtime-definitions/internal";
 import {
 	UsageError,
@@ -142,9 +143,12 @@ function makeContainerLoaderOptions(options: OdspServiceOptions): {
  * The container ID (used for `ServiceClient.loadContainer`) is the ODSP `itemId`,
  * which is assigned by the service when {@link OdspServiceContainer.attach} is called.
  *
- * @alpha
+ * @internal
  */
-export class OdspServiceContainer<TData> implements FluidContainerWithService<TData> {
+export class OdspServiceContainer<TData>
+	extends ServiceContainerBase<TData>
+	implements FluidContainerWithService<TData>
+{
 	public static async createDetached<T>(
 		registry: DataStoreRegistry<T>,
 		options: OdspServiceOptions,
@@ -207,7 +211,13 @@ export class OdspServiceContainer<TData> implements FluidContainerWithService<TD
 		public readonly container: IContainer,
 		public readonly data: TData,
 		public id: string | undefined,
-	) {}
+	) {
+		super();
+	}
+
+	public get audience(): IAudience {
+		return this.container.audience;
+	}
 
 	public async createDataStore<T>(key: DataStoreKey<T>): Promise<T> {
 		const kind = await registryLookup(this.registry, key);

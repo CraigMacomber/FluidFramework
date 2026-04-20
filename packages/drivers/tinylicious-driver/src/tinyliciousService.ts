@@ -4,6 +4,7 @@
  */
 
 import type {
+	IAudience,
 	ICodeDetailsLoader,
 	IContainer,
 	IContainerContext,
@@ -40,6 +41,7 @@ import {
 	basicKey,
 	DataStoreKindImplementation,
 	registryLookup,
+	ServiceContainerBase,
 } from "@fluidframework/runtime-definitions/internal";
 import {
 	UsageError,
@@ -232,9 +234,12 @@ function makeContainerLoaderOptions(options: TinyliciousServiceOptions): {
 
 /**
  * A Fluid container backed by tinylicious, implementing {@link @fluidframework/runtime-definitions#FluidContainerWithService}.
- * @alpha
+ * @internal
  */
-export class TinyliciousServiceContainer<TData> implements FluidContainerWithService<TData> {
+export class TinyliciousServiceContainer<TData>
+	extends ServiceContainerBase<TData>
+	implements FluidContainerWithService<TData>
+{
 	public static async createDetached<T>(
 		registry: DataStoreRegistry<T>,
 		options: TinyliciousServiceOptions,
@@ -289,7 +294,13 @@ export class TinyliciousServiceContainer<TData> implements FluidContainerWithSer
 		public readonly container: IContainer,
 		public readonly data: TData,
 		public id: string | undefined,
-	) {}
+	) {
+		super();
+	}
+
+	public get audience(): IAudience {
+		return this.container.audience;
+	}
 
 	public async createDataStore<T>(key: DataStoreKey<T>): Promise<T> {
 		const kind = await registryLookup(this.registry, key);

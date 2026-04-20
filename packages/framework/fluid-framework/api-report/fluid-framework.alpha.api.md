@@ -532,7 +532,7 @@ export const FluidClientVersion: {
 };
 
 // @alpha @sealed
-export interface FluidContainer<TData = unknown> extends DataStoreCreator {
+export interface FluidContainer<TData = unknown> extends DataStoreCreator, ErasedBaseType<readonly ["FluidContainer", TData]> {
     readonly data: TData;
     readonly id?: string | undefined;
 }
@@ -648,6 +648,9 @@ export type FormatVersion = number | string | undefined;
 
 // @alpha
 export function generateSchemaFromSimpleSchema(simple: SimpleTreeSchema): TreeSchema;
+
+// @alpha
+export function getContainerAudience(container: FluidContainerAttached): IAudience;
 
 // @alpha
 export function getJsonSchema(schema: ImplicitAllowedTypes, options: Required<TreeSchemaEncodingOptions>): JsonTreeSchema;

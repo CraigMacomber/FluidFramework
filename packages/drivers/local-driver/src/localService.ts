@@ -5,6 +5,7 @@
 
 import {
 	ConnectionState,
+	type IAudience,
 	type IContainer,
 } from "@fluidframework/container-definitions/internal";
 import {
@@ -34,6 +35,7 @@ import type {
 import {
 	DataStoreKindImplementation,
 	registryLookup,
+	ServiceContainerBase,
 } from "@fluidframework/runtime-definitions/internal";
 import {
 	LocalDeltaConnectionServer,
@@ -163,9 +165,12 @@ let documentIdCounter = 0;
  * {@link localServer}. All containers created by {@link createEphemeralServiceClient} share the
  * same server instance, enabling side-by-side collaboration testing without a real server.
  *
- * @alpha
+ * @internal
  */
-export class EphemeralServiceContainer<TData> implements FluidContainerWithService<TData> {
+export class EphemeralServiceContainer<TData>
+	extends ServiceContainerBase<TData>
+	implements FluidContainerWithService<TData>
+{
 	public static async createDetached<T>(
 		registry: DataStoreRegistry<T>,
 		options: ServiceOptions,
@@ -226,8 +231,13 @@ export class EphemeralServiceContainer<TData> implements FluidContainerWithServi
 		public readonly data: TData,
 		public id: string | undefined,
 	) {
+		super();
 		containers.push(this);
 		updateContainers();
+	}
+
+	public get audience(): IAudience {
+		return this.container.audience;
 	}
 
 	public async createDataStore<T>(key: DataStoreKey<T>): Promise<T> {

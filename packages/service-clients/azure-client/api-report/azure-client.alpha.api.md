@@ -74,28 +74,6 @@ export interface AzureRemoteConnectionConfig extends AzureConnectionConfig {
 }
 
 // @alpha
-export class AzureServiceContainer<TData> implements FluidContainerWithService<TData> {
-    // (undocumented)
-    attach(): Promise<FluidContainerAttached<TData>>;
-    // (undocumented)
-    readonly container: IContainer;
-    // (undocumented)
-    createDataStore<T>(key: DataStoreKey<T>): Promise<T>;
-    // (undocumented)
-    static createDetached<T>(registry: DataStoreRegistry<T>, options: AzureServiceOptions, root: DataStoreKind<T>): Promise<AzureServiceContainer<T>>;
-    // (undocumented)
-    readonly data: TData;
-    // (undocumented)
-    id: string | undefined;
-    // (undocumented)
-    static load<T>(registry: DataStoreRegistry<T>, options: AzureServiceOptions, id: string): Promise<AzureServiceContainer<T> & FluidContainerAttached<T>>;
-    // (undocumented)
-    readonly options: AzureServiceOptions;
-    // (undocumented)
-    readonly registry: Registry<Promise<DataStoreKind<TData>>>;
-}
-
-// @alpha
 export interface AzureServiceOptions {
     // (undocumented)
     readonly configProvider?: IConfigProviderBase;

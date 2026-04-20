@@ -76,7 +76,7 @@ export interface DetachedAttributionKey {
 }
 
 // @alpha @sealed
-export interface FluidContainer<TData = unknown> extends DataStoreCreator {
+export interface FluidContainer<TData = unknown> extends DataStoreCreator, ErasedBaseType<readonly ["FluidContainer", TData]> {
     readonly data: TData;
     readonly id?: string | undefined;
 }
@@ -100,6 +100,9 @@ export enum FlushMode {
     Immediate = 0,
     TurnBased = 1
 }
+
+// @alpha
+export function getContainerAudience(container: FluidContainerAttached): IAudience;
 
 // @beta @legacy
 export interface IAttachMessage {

@@ -84,28 +84,6 @@ export interface OdspMember extends IMember {
 }
 
 // @alpha
-export class OdspServiceContainer<TData> implements FluidContainerWithService<TData> {
-    // (undocumented)
-    attach(): Promise<FluidContainerAttached<TData>>;
-    // (undocumented)
-    readonly container: IContainer;
-    // (undocumented)
-    createDataStore<T>(key: DataStoreKey<T>): Promise<T>;
-    // (undocumented)
-    static createDetached<T>(registry: DataStoreRegistry<T>, options: OdspServiceOptions, root: DataStoreKind<T>): Promise<OdspServiceContainer<T>>;
-    // (undocumented)
-    readonly data: TData;
-    // (undocumented)
-    id: string | undefined;
-    // (undocumented)
-    static load<T>(registry: DataStoreRegistry<T>, options: OdspServiceOptions, id: string): Promise<OdspServiceContainer<T> & FluidContainerAttached<T>>;
-    // (undocumented)
-    readonly options: OdspServiceOptions;
-    // (undocumented)
-    readonly registry: Registry<Promise<DataStoreKind<TData>>>;
-}
-
-// @alpha
 export interface OdspServiceOptions {
     // (undocumented)
     readonly configProvider?: IConfigProviderBase;

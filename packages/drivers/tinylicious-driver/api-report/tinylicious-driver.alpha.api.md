@@ -21,28 +21,6 @@ export class InsecureTinyliciousTokenProvider implements ITokenProvider {
 }
 
 // @alpha
-export class TinyliciousServiceContainer<TData> implements FluidContainerWithService<TData> {
-    // (undocumented)
-    attach(): Promise<FluidContainerAttached<TData>>;
-    // (undocumented)
-    readonly container: IContainer;
-    // (undocumented)
-    createDataStore<T>(key: DataStoreKey<T>): Promise<T>;
-    // (undocumented)
-    static createDetached<T>(registry: DataStoreRegistry<T>, options: TinyliciousServiceOptions, root: DataStoreKind<T>): Promise<TinyliciousServiceContainer<T>>;
-    // (undocumented)
-    readonly data: TData;
-    // (undocumented)
-    id: string | undefined;
-    // (undocumented)
-    static load<T>(registry: DataStoreRegistry<T>, options: TinyliciousServiceOptions, id: string): Promise<TinyliciousServiceContainer<T> & FluidContainerAttached<T>>;
-    // (undocumented)
-    readonly options: TinyliciousServiceOptions;
-    // (undocumented)
-    readonly registry: Registry<Promise<DataStoreKind<TData>>>;
-}
-
-// @alpha
 export interface TinyliciousServiceOptions extends ServiceOptions {
     readonly endpoint?: string;
     readonly port?: number;

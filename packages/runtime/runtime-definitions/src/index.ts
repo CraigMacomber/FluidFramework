@@ -123,4 +123,8 @@ export type {
 	DataStoreRegistry,
 } from "./serviceClient.js";
 
-export { DataStoreKindImplementation } from "./serviceClient.js";
+export {
+	DataStoreKindImplementation,
+	ServiceContainerBase,
+	getContainerAudience,
+} from "./serviceClient.js";

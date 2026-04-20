@@ -3,6 +3,7 @@
  * Licensed under the MIT License.
  */
 
+import type { IAudience } from "@fluidframework/container-definitions";
 import {
 	type ErasedBaseType,
 	ErasedTypeImplementation,
@@ -60,7 +61,9 @@ export type DataStoreKey<T, TAll = unknown> = RegistryKey<
  * @sealed
  * @alpha
  */
-export interface FluidContainer<TData = unknown> extends DataStoreCreator {
+export interface FluidContainer<TData = unknown>
+	extends DataStoreCreator,
+		ErasedBaseType<readonly ["FluidContainer", TData]> {
 	/**
 	 * The unique identifier for this container, if it has been attached to a service.
 	 */
@@ -257,6 +260,41 @@ export interface ServiceClient {
 		id: string,
 		root: DataStoreKind<T> | DataStoreRegistry<T>,
 	): Promise<FluidContainerAttached<T>>;
+}
+
+/**
+ * Shared base class for all {@link ServiceClient} container implementations.
+ *
+ * @remarks
+ * Extends {@link @fluidframework/core-interfaces#ErasedTypeImplementation} so that
+ * {@link getContainerAudience} can narrow via `ServiceContainerBase.narrow()`.
+ *
+ * @internal
+ */
+export abstract class ServiceContainerBase<TData>
+	extends ErasedTypeImplementation<FluidContainer<TData>>
+	implements FluidContainer<TData>
+{
+	protected constructor() {
+		super();
+	}
+
+	public abstract readonly id: string | undefined;
+	public abstract readonly data: TData;
+	public abstract createDataStore<T>(kind: DataStoreKey<T>): Promise<T>;
+
+	public abstract get audience(): IAudience;
+}
+
+/**
+ * Gets the {@link @fluidframework/container-definitions#IAudience} from a Fluid container
+ * created by any {@link ServiceClient}.
+ *
+ * @alpha
+ */
+export function getContainerAudience(container: FluidContainerAttached): IAudience {
+	ServiceContainerBase.narrow(container);
+	return container.audience;
 }
 
 /**
