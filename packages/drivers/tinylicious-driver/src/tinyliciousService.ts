@@ -3,45 +3,32 @@
  * Licensed under the MIT License.
  */
 
-import type {
-	ICodeDetailsLoader,
-	IContainer,
-	IContainerContext,
-	IFluidCodeDetails,
-	IFluidCodeDetailsComparer,
-	IFluidModuleWithDetails,
-	IRuntime,
-	IRuntimeFactory,
-} from "@fluidframework/container-definitions/internal";
+import type { IContainer } from "@fluidframework/container-definitions/internal";
 import {
 	createDetachedContainer,
 	loadExistingContainer,
 } from "@fluidframework/container-loader/internal";
 import { ContainerRuntime } from "@fluidframework/container-runtime/internal";
-import type { IContainerRuntime } from "@fluidframework/container-runtime-definitions/internal";
-import type { FluidObject } from "@fluidframework/core-interfaces";
 import { assert } from "@fluidframework/core-utils/internal";
 import type { IUrlResolver } from "@fluidframework/driver-definitions/internal";
+import {
+	type ContainerRuntimeLoader,
+	type ContainerRuntimeLoaderParams,
+	makeCodeLoader,
+	makeServiceClientImpl,
+	rootDataStoreId,
+} from "@fluidframework/driver-utils/internal";
 import { RouterliciousDocumentServiceFactory } from "@fluidframework/routerlicious-driver/internal";
 import type {
-	DataStoreKey,
 	DataStoreKind,
 	DataStoreRegistry,
 	FluidContainerAttached,
 	FluidContainerWithService,
-	FluidDataStoreRegistryEntry,
-	IFluidDataStoreRegistry,
-	MinimumVersionForCollab,
 	Registry,
 	ServiceClient,
 	ServiceOptions,
 } from "@fluidframework/runtime-definitions/internal";
-import {
-	basicKey,
-	DataStoreKindImplementation,
-	registryLookup,
-	ServiceContainerBase,
-} from "@fluidframework/runtime-definitions/internal";
+import { ServiceContainerBase } from "@fluidframework/runtime-definitions/internal";
 import { wrapConfigProviderWithDefaults } from "@fluidframework/telemetry-utils/internal";
 
 import { InsecureTinyliciousTokenProvider } from "./insecureTinyliciousTokenProvider.js";
@@ -80,125 +67,31 @@ export interface TinyliciousServiceOptions extends ServiceOptions {
 export function createTinyliciousServiceClient(
 	options: TinyliciousServiceOptions,
 ): ServiceClient {
-	return new TinyliciousServiceClientImpl(options);
+	return makeServiceClientImpl(options, TinyliciousServiceContainer);
 }
 
-const rootDataStoreId = "root";
-
-class TinyliciousServiceClientImpl implements ServiceClient {
-	public constructor(private readonly options: TinyliciousServiceOptions) {}
-
-	public createContainer<T>(root: DataStoreKind<T>): Promise<FluidContainerWithService<T>>;
-
-	public createContainer<T>(
-		root: DataStoreKey<T>,
-		registry: Registry<Promise<DataStoreKind>>,
-	): Promise<FluidContainerWithService<T>>;
-
-	public async createContainer<T>(
-		root: DataStoreKey<T> | DataStoreKind<T>,
-		registry?: Registry<Promise<DataStoreKind<T>>>,
-	): Promise<FluidContainerWithService<T>> {
-		if (registry === undefined) {
-			DataStoreKindImplementation.narrowGeneric(root);
-			return TinyliciousServiceContainer.createDetached(
-				normalizeRegistry(root),
-				this.options,
-				root,
-			);
-		} else {
-			const result = await registryLookup(registry, root);
-			return TinyliciousServiceContainer.createDetached(registry, this.options, result);
-		}
+const containerRuntimeLoader: ContainerRuntimeLoader = async (
+	parameters: ContainerRuntimeLoaderParams,
+) => {
+	const { runtime } = await ContainerRuntime.loadRuntime2({
+		context: parameters.context,
+		registry: parameters.registry,
+		provideEntryPoint: parameters.provideEntryPoint,
+		existing: parameters.existing,
+		minVersionForCollab: parameters.minVersionForCollab,
+		runtimeOptions: { enableRuntimeIdCompressor: "on" },
+	});
+	if (!parameters.existing) {
+		assert(
+			parameters.newContainerRootType !== undefined,
+			"Root data store kind must be provided for new containers",
+		);
+		const dataStore = await runtime.createDataStore(parameters.newContainerRootType);
+		const aliasResult = await dataStore.trySetAlias(rootDataStoreId);
+		assert(aliasResult === "Success", "Should be able to set alias on new data store");
 	}
-
-	public async loadContainer<T>(
-		id: string,
-		root: DataStoreKind<T> | Registry<Promise<DataStoreKind<T>>>,
-	): Promise<FluidContainerAttached<T>> {
-		return TinyliciousServiceContainer.load(normalizeRegistry(root), this.options, id);
-	}
-}
-
-function convertRegistry<T>(registry: DataStoreRegistry<T>): IFluidDataStoreRegistry {
-	return {
-		async get(name: string): Promise<FluidDataStoreRegistryEntry | undefined> {
-			const dataStoreKind = await registryLookup(registry, basicKey(name));
-			DataStoreKindImplementation.narrowGeneric(dataStoreKind);
-			return dataStoreKind;
-		},
-		get IFluidDataStoreRegistry(): IFluidDataStoreRegistry {
-			return this;
-		},
-	};
-}
-
-function makeCodeLoader<T>(
-	registry: DataStoreRegistry<T>,
-	minVersionForCollab: MinimumVersionForCollab,
-	root?: DataStoreKind<T>,
-): ICodeDetailsLoader {
-	const fluidExport: IRuntimeFactory & IFluidCodeDetailsComparer = {
-		async instantiateRuntime(
-			context: IContainerContext,
-			existing: boolean,
-		): Promise<IRuntime> {
-			const provideEntryPoint = async (
-				entryPointRuntime: IContainerRuntime,
-			): Promise<T & FluidObject> => {
-				const data = await entryPointRuntime.getAliasedDataStoreEntryPoint(rootDataStoreId);
-				if (data === undefined) {
-					throw new Error("Root data store missing!");
-				}
-				const rootDataStore = await data.get();
-				return rootDataStore as T & FluidObject;
-			};
-
-			const { runtime } = await ContainerRuntime.loadRuntime2({
-				context,
-				registry: convertRegistry(registry),
-				provideEntryPoint,
-				existing,
-				minVersionForCollab,
-				runtimeOptions: { enableRuntimeIdCompressor: "on" },
-			});
-
-			if (!existing) {
-				assert(root !== undefined, "Root data store kind must be provided for new containers");
-				const dataStore = await runtime.createDataStore(root.type);
-				const aliasResult = await dataStore.trySetAlias(rootDataStoreId);
-				assert(aliasResult === "Success", "Should be able to set alias on new data store");
-			}
-
-			return runtime;
-		},
-
-		async satisfies(
-			candidate: IFluidCodeDetails,
-			constraint: IFluidCodeDetails,
-		): Promise<boolean> {
-			return true;
-		},
-
-		async compare(a: IFluidCodeDetails, b: IFluidCodeDetails): Promise<number | undefined> {
-			return 0;
-		},
-
-		get IRuntimeFactory(): IRuntimeFactory {
-			return fluidExport;
-		},
-
-		get IFluidCodeDetailsComparer(): IFluidCodeDetailsComparer {
-			return fluidExport;
-		},
-	};
-
-	return {
-		load: async (details: IFluidCodeDetails): Promise<IFluidModuleWithDetails> => {
-			return { module: { fluidExport }, details };
-		},
-	};
-}
+	return runtime;
+};
 
 function makeContainerLoaderOptions(options: TinyliciousServiceOptions): {
 	urlResolver: IUrlResolver;
@@ -241,7 +134,7 @@ export class TinyliciousServiceContainer<TData>
 
 		const container: IContainer = await createDetachedContainer({
 			codeDetails: { package: "no-dynamic-package", config: {} },
-			codeLoader: makeCodeLoader(registry, minVersionForCollab, root),
+			codeLoader: makeCodeLoader(registry, minVersionForCollab, containerRuntimeLoader, root),
 			...loaderOptions,
 		});
 
@@ -264,7 +157,7 @@ export class TinyliciousServiceContainer<TData>
 
 		const containerInner = await loadExistingContainer({
 			request: { url: id },
-			codeLoader: makeCodeLoader(registry, minVersionForCollab),
+			codeLoader: makeCodeLoader(registry, minVersionForCollab, containerRuntimeLoader),
 			...loaderOptions,
 		});
 
@@ -297,15 +190,4 @@ export class TinyliciousServiceContainer<TData>
 		}
 		return this.container.resolvedUrl.id;
 	}
-}
-
-function normalizeRegistry<T>(
-	input: DataStoreKind<T> | Registry<Promise<DataStoreKind<T>>>,
-): Registry<Promise<DataStoreKind<T>>> {
-	if (DataStoreKindImplementation.guard(input)) {
-		const x = input;
-		return async () => x;
-	}
-	assert(typeof input === "function", "Registry must be a function");
-	return input;
 }

@@ -34,16 +34,21 @@ export const diceRollerDataStoreKind = treeDataStoreKind({
 
 const fluidClient = process.env.FLUID_CLIENT;
 
+const serviceOptions = {
+	minVersionForCollab: "2.100.0",
+} as const;
+
 /**
  * The active service client — tinylicious by default, Azure when FLUID_CLIENT=azure.
  */
 export const service =
 	fluidClient === "azure"
 		? createAzureServiceClient({
+				...serviceOptions,
 				connection: {
 					type: "local",
 					endpoint: "http://localhost:7071",
 					tokenProvider: new InsecureTinyliciousTokenProvider(),
 				},
 			})
-		: createTinyliciousServiceClient({ minVersionForCollab: "2.100.0" });
+		: createTinyliciousServiceClient(serviceOptions);

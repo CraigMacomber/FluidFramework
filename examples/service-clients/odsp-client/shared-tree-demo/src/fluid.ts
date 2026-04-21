@@ -9,7 +9,10 @@ import { treeDataStoreKind } from "fluid-framework/alpha";
 import { connectionConfig } from "./clientProps.js";
 import { App, treeConfiguration } from "./schema.js";
 
-export const service = createOdspServiceClient({ connection: connectionConfig });
+export const service = createOdspServiceClient({
+	connection: connectionConfig,
+	minVersionForCollab: "2.0.0",
+});
 
 export const appDataStoreKind = treeDataStoreKind({
 	type: "shared-tree-demo",

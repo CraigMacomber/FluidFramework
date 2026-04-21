@@ -92,7 +92,7 @@ export interface FluidContainerDevtoolsProps extends HasContainerKey {
 }
 
 /**
- * Properties for configuring {@link IFluidDevtools} with {@link @fluidframework/runtime-definitions#FluidContainer}s.
+ * Properties for configuring {@link FluidDevtools} with {@link @fluidframework/runtime-definitions#FluidContainer}s.
  *
  * @sealed
  * @alpha
@@ -110,7 +110,7 @@ export interface FluidDevtoolsProps {
 	/**
 	 * (optional) List of Containers to initialize the devtools with.
 	 *
-	 * @remarks Additional Containers can be registered via {@link IFluidDevtools.registerFluidContainerDevtools}.
+	 * @remarks Additional Containers can be registered via {@link FluidDevtools.registerFluidContainerDevtools}.
 	 */
 	readonly initialContainers?: FluidContainerDevtoolsProps[];
 }
@@ -159,7 +159,7 @@ export interface IDevtools extends IDisposable {
  * @sealed
  * @alpha
  */
-export interface IFluidDevtools extends IDevtools {
+export interface FluidDevtools extends IDevtools {
 	/**
 	 * Registers a {@link @fluidframework/runtime-definitions#FluidContainer} with the Devtools.
 	 *
@@ -171,7 +171,7 @@ export interface IFluidDevtools extends IDevtools {
 	registerFluidContainerDevtools(props: FluidContainerDevtoolsProps): Promise<void>;
 }
 
-class Devtools implements IFluidDevtools {
+class Devtools implements FluidDevtools {
 	public constructor(
 		/**
 		 * Handle to the underlying Devtools instance (singleton).
@@ -285,9 +285,9 @@ async function mapFluidContainerProps(
  *
  * @alpha
  */
-export async function initializeDevtoolsAlpha(
+export async function initializeFluidDevtools(
 	props: FluidDevtoolsProps,
-): Promise<IFluidDevtools> {
+): Promise<FluidDevtools> {
 	const { initialContainers, logger } = props;
 	const mappedInitialContainers =
 		initialContainers === undefined

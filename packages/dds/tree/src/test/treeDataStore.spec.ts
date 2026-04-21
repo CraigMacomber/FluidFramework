@@ -7,6 +7,7 @@ import { strict as assert } from "node:assert";
 
 import type { IFluidLoadable } from "@fluidframework/core-interfaces";
 import {
+	closeEphemeralContainers,
 	createEphemeralServiceClient,
 	synchronizeLocalService,
 } from "@fluidframework/local-driver/internal";
@@ -23,6 +24,10 @@ import { instantiateTreeFirstTime, treeDataStoreKind } from "../treeDataStore.js
 import { SharedTree } from "../treeFactory.js";
 
 describe("treeDataStore", () => {
+	afterEach(async () => {
+		await closeEphemeralContainers();
+	});
+
 	it("detached example", async () => {
 		const myFactory = treeDataStoreKind({
 			type: "my-tree",

@@ -19,16 +19,21 @@ import { inventoryDataStoreKind } from "./inventoryList.js";
 import type { Inventory } from "./schema.js";
 import { MainView } from "./view/index.js";
 
+const serviceOptions = {
+	minVersionForCollab: "2.100.0",
+} as const;
+
 const service =
 	process.env.FLUID_CLIENT === "azure"
 		? createAzureServiceClient({
+				...serviceOptions,
 				connection: {
 					type: "local",
 					endpoint: "http://localhost:7071",
 					tokenProvider: new InsecureTinyliciousTokenProvider(),
 				},
 			})
-		: createTinyliciousServiceClient({ minVersionForCollab: "2.100.0" });
+		: createTinyliciousServiceClient(serviceOptions);
 
 const id = location.hash.slice(1);
 let attached: FluidContainerAttached<TreeView<typeof Inventory>>;

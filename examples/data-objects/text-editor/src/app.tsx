@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import { createDevtoolsLogger, initializeDevtoolsAlpha } from "@fluidframework/devtools/alpha";
+import { createDevtoolsLogger, initializeFluidDevtools } from "@fluidframework/devtools/alpha";
 import {
 	FormattedMainView,
 	QuillMainView as PlainQuillView,
@@ -119,7 +119,7 @@ async function initFluid(): Promise<DualUserViews> {
 	const user2Container = await service2.loadContainer(containerId, textEditorKind);
 
 	// Initialize Devtools
-	await initializeDevtoolsAlpha({
+	await initializeFluidDevtools({
 		logger: devtoolsLogger,
 		initialContainers: [
 			{

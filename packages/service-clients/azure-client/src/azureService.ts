@@ -17,7 +17,6 @@ import { assert } from "@fluidframework/core-utils/internal";
 import {
 	type ContainerRuntimeLoader,
 	type ContainerRuntimeLoaderParams,
-	defaultMinVersionForCollab,
 	makeCodeLoader,
 	makeServiceClientImpl,
 	rootDataStoreId,
@@ -45,7 +44,7 @@ import { isAzureRemoteConnectionConfig } from "./utils.js";
  */
 export interface AzureServiceOptions {
 	readonly connection: AzureRemoteConnectionConfig | AzureLocalConnectionConfig;
-	readonly minVersionForCollab?: MinimumVersionForCollab;
+	readonly minVersionForCollab: MinimumVersionForCollab;
 	readonly logger?: ITelemetryBaseLogger;
 	readonly configProvider?: IConfigProviderBase;
 }
@@ -138,7 +137,7 @@ export class AzureServiceContainer<TData>
 		root: DataStoreKind<T>,
 	): Promise<AzureServiceContainer<T>> {
 		const loaderOptions = makeContainerLoaderOptions(options);
-		const minVersionForCollab = options.minVersionForCollab ?? defaultMinVersionForCollab;
+		const { minVersionForCollab } = options;
 
 		const container: IContainer = await createDetachedContainer({
 			codeDetails: { package: "no-dynamic-package", config: {} },
@@ -161,7 +160,7 @@ export class AzureServiceContainer<TData>
 		id: string,
 	): Promise<AzureServiceContainer<T> & FluidContainerAttached<T>> {
 		const loaderOptions = makeContainerLoaderOptions(options);
-		const minVersionForCollab = options.minVersionForCollab ?? defaultMinVersionForCollab;
+		const { minVersionForCollab } = options;
 
 		const { connection } = options;
 		const url = new URL(connection.endpoint);
