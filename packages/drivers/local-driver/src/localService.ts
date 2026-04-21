@@ -58,20 +58,18 @@ export function createEphemeralServiceClient(
 }
 
 /**
- * Closes the shared ephemeral local service, releasing all internal resources (timers, sockets).
+ * Closes any open ephemeral service containers.
  *
  * @remarks
- * Call this once after all tests that used {@link createEphemeralServiceClient} have completed,
- * so that the Node.js event loop is not kept alive by the server's internal timers.
- * The service cannot be used after this call.
- *
+ * This can be used to cleanup lingering timers from containers created using a client from {@link createEphemeralServiceClient}.
+ * Such timers are a common case of hangs on exist (often worked around using Mocha's `--exit` flag).
  * @alpha
  */
-export async function closeEphemeralServiceClient(): Promise<void> {
+export async function closeEphemeralContainers(): Promise<void> {
 	const toClose = containers;
 	containers = [];
 	for (const c of toClose) {
-		c.container.dispose();
+		c.container.close();
 	}
 	updateContainers();
 }

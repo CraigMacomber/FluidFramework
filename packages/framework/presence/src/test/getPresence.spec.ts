@@ -6,7 +6,7 @@
 import { strict as assert } from "node:assert";
 
 import {
-	closeEphemeralServiceClient,
+	closeEphemeralContainers,
 	createEphemeralServiceClient,
 	synchronizeLocalService,
 } from "@fluidframework/local-driver/internal";
@@ -20,8 +20,10 @@ import { getPresenceFromContainer } from "../getPresence.js";
 describe("getPresenceFromContainer", () => {
 	const stubFactory = makeStubDataStoreKind("presence-test-stub");
 
-	after(async () => {
-		await closeEphemeralServiceClient();
+	afterEach(async () => {
+		// Doing the close here instead of in each test ensues that failing tests will still have their containers closed,
+		// timer leaks preventing clean test exit.
+		await closeEphemeralContainers();
 	});
 
 	it("returns PresenceWithNotifications from an attached container", async () => {

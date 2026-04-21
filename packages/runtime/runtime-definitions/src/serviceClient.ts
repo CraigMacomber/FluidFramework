@@ -63,6 +63,10 @@ export type DataStoreKey<T, TAll = unknown> = RegistryKey<
  * For example maybe a single status enum for `detached -> attaching -> dirty -> saved -> closed` would be good.
  * Or maybe `detached -> attaching -> attached -> closed` and a timer for how long since the last unsaved change was created.
  *
+ * The underlying IContainer has a lifecycle which includes both a closed and disposed state.
+ * This should be avoidable: the closed by not disposed state exists so its possible to read out some state at that time.
+ * We have made the close remove all the timers, so the the dispose step is be unnecessary and we can just have a single closed state.
+ *
  * @sealed
  * @alpha
  */
@@ -80,6 +84,17 @@ export interface FluidContainer<TData = unknown>
 	 * The type of the root data store is defined by the {@link DataStoreKind} used to create the container.
 	 */
 	readonly data: TData;
+
+	/**
+	 * Close the container, stopping all networking and cancelling runtime timers.
+	 *
+	 * @remarks
+	 * After calling `close()`, the container's data can still be read but no further operations can be sent.
+	 * @privateRemarks
+	 * TODO: we should document the what the expected behavior is if one tries to modify the data after close, or tries to call close multiple times.
+	 * TODO: we also likely want to have a way to detect if closed and events for on close.
+	 */
+	close(): void;
 }
 
 /**
@@ -298,6 +313,10 @@ export abstract class ServiceContainerBase<TData, TOptions = unknown>
 		// TODO: Do something better
 		const container = this.container as IContainerWithRuntime;
 		return container.runtime;
+	}
+
+	public close(): void {
+		this.container.close();
 	}
 
 	public async createDataStore<T>(key: DataStoreKey<T>): Promise<T> {
