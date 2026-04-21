@@ -13,9 +13,8 @@ import {
 import type { FluidContainerAttached } from "@fluidframework/runtime-definitions/internal";
 import { makeStubDataStoreKind } from "@fluidframework/shared-object-base/internal";
 
-import { StateFactory } from "@fluidframework/presence/alpha";
-
-import { getPresenceFromContainer } from "../getPresence.js";
+import { getPresenceFromContainer } from "@fluid-internal/presence-runtime/extension";
+import { StateFactory } from "@fluid-internal/presence-runtime/states";
 
 describe("getPresenceFromContainer", () => {
 	const stubFactory = makeStubDataStoreKind("presence-test-stub");

@@ -133,7 +133,7 @@ function makeContainerLoaderOptions(options: OdspServiceOptions): {
  *
  * @remarks
  * The container ID (used for `ServiceClient.loadContainer`) is the ODSP `itemId`,
- * which is assigned by the service when {@link OdspServiceContainer.attach} is called.
+ * which is assigned by the service when `attach` is called.
  *
  * @internal
  */

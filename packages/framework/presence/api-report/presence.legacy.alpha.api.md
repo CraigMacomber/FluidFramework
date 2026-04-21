@@ -55,7 +55,6 @@ export const getPresence: (fluidContainer: IFluidContainer) => Presence;
 // @alpha
 export function getPresenceFromContainer(container: FluidContainerAttached): PresenceWithNotifications;
 
-
 // @alpha @legacy
 export function getPresenceFromDataStoreContext(context: IFluidDataStoreContext): Presence;
 
@@ -402,8 +401,8 @@ export interface RawValueAccessor<T> {
 
 // @public
 export const StateFactory: {
-    readonly latest: LatestFactory_2;
-    readonly latestMap: LatestMapFactory_2;
+    readonly latest: LatestFactory;
+    readonly latestMap: LatestMapFactory;
 };
 
 // @public @sealed

@@ -3,8 +3,7 @@
  * Licensed under the MIT License.
  */
 
-// eslint-disable-next-line import-x/no-internal-modules
-import { getPresenceFromContainer } from "@fluidframework/presence/internal";
+import { getPresenceFromContainer } from "@fluidframework/presence/alpha";
 // eslint-disable-next-line import-x/no-internal-modules
 import type { Audience } from "@fluidframework/runtime-definitions/internal";
 // eslint-disable-next-line import-x/no-internal-modules
