@@ -35,7 +35,6 @@ import {
 	LocalDeltaConnectionServer,
 	type ILocalDeltaConnectionServer,
 } from "@fluidframework/server-local-server";
-import { UsageError } from "@fluidframework/telemetry-utils/internal";
 
 import { LocalDocumentServiceFactory } from "./localDocumentServiceFactory.js";
 import { createLocalResolverCreateNewRequest, LocalResolver } from "./localResolver.js";
@@ -247,20 +246,13 @@ export class EphemeralServiceContainer<TData>
 		updateContainers();
 	}
 
-	public async attach(): Promise<FluidContainerAttached<TData>> {
-		// TODO: handel concurrent attach calls
-		if (this.id !== undefined) {
-			throw new UsageError("Container already attached");
-		}
-
+	protected async attachCore(): Promise<string> {
 		const documentId = (documentIdCounter++).toString();
 		await this.container.attach(createLocalResolverCreateNewRequest(documentId));
 
 		if (this.container.resolvedUrl === undefined) {
 			throw new Error("Resolved URL unexpectedly missing!");
 		}
-		this.id = this.container.resolvedUrl.id;
-
-		return this as typeof this & { id: string };
+		return this.container.resolvedUrl.id;
 	}
 }

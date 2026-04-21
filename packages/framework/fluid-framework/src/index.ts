@@ -84,6 +84,12 @@ export type { isFluidHandle } from "@fluidframework/runtime-utils";
 	*/
 export * from "@fluidframework/tree/alpha";
 
+// End of basic public+beta+alpha exports - nothing above this line should
+// depend on an /internal path.
+// #endregion Basic re-exports
+// ---------------------------------------------------------------
+// #region Custom re-exports
+
 // These are alpha APIs, but this package doesn't have an alpha entry point so they are imported from "internal".
 export {
 	dataStoreKind,
@@ -117,12 +123,6 @@ export {
 	// do not reexport getContainerAudience for now.
 	// getContainerAudience,
 } from "@fluidframework/runtime-definitions/internal";
-
-// End of basic public+beta+alpha exports - nothing above this line should
-// depend on an /internal path.
-// #endregion Basic re-exports
-// ---------------------------------------------------------------
-// #region Custom re-exports
 
 import type { SharedObjectKind } from "@fluidframework/shared-object-base";
 import type { ITree } from "@fluidframework/tree";

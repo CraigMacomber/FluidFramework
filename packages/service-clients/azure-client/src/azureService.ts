@@ -33,10 +33,7 @@ import type {
 	ServiceClient,
 } from "@fluidframework/runtime-definitions/internal";
 import { ServiceContainerBase } from "@fluidframework/runtime-definitions/internal";
-import {
-	UsageError,
-	wrapConfigProviderWithDefaults,
-} from "@fluidframework/telemetry-utils/internal";
+import { wrapConfigProviderWithDefaults } from "@fluidframework/telemetry-utils/internal";
 
 import { AzureUrlResolver, createAzureCreateNewRequest } from "./AzureUrlResolver.js";
 import type { AzureLocalConnectionConfig, AzureRemoteConnectionConfig } from "./interfaces.js";
@@ -199,11 +196,7 @@ export class AzureServiceContainer<TData>
 		super(registry, options, container, data, id);
 	}
 
-	public async attach(): Promise<FluidContainerAttached<TData>> {
-		if (this.id !== undefined) {
-			throw new UsageError("Container already attached");
-		}
-
+	protected async attachCore(): Promise<string> {
 		const { connection } = this.options;
 		await this.container.attach(
 			createAzureCreateNewRequest(connection.endpoint, getTenantId(connection)),
@@ -212,8 +205,6 @@ export class AzureServiceContainer<TData>
 		if (this.container.resolvedUrl === undefined) {
 			throw new Error("Resolved Url unexpectedly missing!");
 		}
-		this.id = this.container.resolvedUrl.id;
-
-		return this as typeof this & { id: string };
+		return this.container.resolvedUrl.id;
 	}
 }

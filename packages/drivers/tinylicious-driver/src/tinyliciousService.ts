@@ -42,10 +42,7 @@ import {
 	registryLookup,
 	ServiceContainerBase,
 } from "@fluidframework/runtime-definitions/internal";
-import {
-	UsageError,
-	wrapConfigProviderWithDefaults,
-} from "@fluidframework/telemetry-utils/internal";
+import { wrapConfigProviderWithDefaults } from "@fluidframework/telemetry-utils/internal";
 
 import { InsecureTinyliciousTokenProvider } from "./insecureTinyliciousTokenProvider.js";
 import {
@@ -297,19 +294,13 @@ export class TinyliciousServiceContainer<TData>
 		super(registry, options, container, data, id);
 	}
 
-	public async attach(): Promise<FluidContainerAttached<TData>> {
-		if (this.id !== undefined) {
-			throw new UsageError("Container already attached");
-		}
-
+	protected async attachCore(): Promise<string> {
 		await this.container.attach(createTinyliciousCreateNewRequest());
 
 		if (this.container.resolvedUrl === undefined) {
 			throw new Error("Resolved URL unexpectedly missing!");
 		}
-		this.id = this.container.resolvedUrl.id;
-
-		return this as typeof this & { id: string };
+		return this.container.resolvedUrl.id;
 	}
 }
 

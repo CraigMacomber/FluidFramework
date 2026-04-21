@@ -49,7 +49,7 @@ export interface ServiceOptions {
  * @remarks
  * This is implemented by {@link DataStoreKind}, but alternative implementations can be used if needed.
  *
- * If lazy loading, and therefore want a key that does not eagerly load the DataStoreKind, an alternative key can be implemented.
+ * If you want lazy loading and need a key that does not eagerly load the {@link DataStoreKind}, an alternative {@link DataStoreKey} can be implemented.
  * @privateRemarks
  * TODO: A built in common pattern for the lazy key case should be provided.
  * TODO: this same key pattern should be applied to SharedObjectKind.
@@ -305,6 +305,8 @@ export abstract class ServiceContainerBase<TData, TOptions = unknown>
 	extends ErasedTypeImplementation<FluidContainer<TData>>
 	implements FluidContainer<TData>
 {
+	private attaching = false;
+
 	protected constructor(
 		public readonly registry: Registry<Promise<DataStoreKind<TData>>>,
 		public readonly options: TOptions,
@@ -313,6 +315,28 @@ export abstract class ServiceContainerBase<TData, TOptions = unknown>
 		public id: string | undefined,
 	) {
 		super();
+	}
+
+	/**
+	 * Performs the service-specific work of attaching this container.
+	 * @returns The container's id as assigned by the service after attachment.
+	 * @remarks
+	 * Called by {@link ServiceContainerBase.attach} after validating that no attach is already in progress.
+	 * Implementations should call `this.container.attach(request)` with a service-appropriate request and
+	 * return the resolved container id.
+	 */
+	protected abstract attachCore(): Promise<string>;
+
+	public async attach(): Promise<FluidContainerAttached<TData>> {
+		if (this.id !== undefined) {
+			throw new UsageError("Container already attached");
+		}
+		if (this.attaching) {
+			throw new UsageError("Container attach already in progress");
+		}
+		this.attaching = true;
+		this.id = await this.attachCore();
+		return this as typeof this & { id: string };
 	}
 
 	public get audience(): IAudience {

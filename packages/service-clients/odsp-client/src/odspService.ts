@@ -40,10 +40,7 @@ import type {
 	ServiceClient,
 } from "@fluidframework/runtime-definitions/internal";
 import { ServiceContainerBase } from "@fluidframework/runtime-definitions/internal";
-import {
-	UsageError,
-	wrapConfigProviderWithDefaults,
-} from "@fluidframework/telemetry-utils/internal";
+import { wrapConfigProviderWithDefaults } from "@fluidframework/telemetry-utils/internal";
 import { v4 as uuid } from "uuid";
 
 import type { OdspConnectionConfig, TokenResponse } from "./interfaces.js";
@@ -210,11 +207,7 @@ export class OdspServiceContainer<TData>
 		super(registry, options, container, data, id);
 	}
 
-	public async attach(): Promise<FluidContainerAttached<TData>> {
-		if (this.id !== undefined) {
-			throw new UsageError("Container already attached");
-		}
-
+	protected async attachCore(): Promise<string> {
 		const { connection } = this.options;
 		const createNewRequest = createOdspCreateContainerRequest(
 			connection.siteUrl,
@@ -228,8 +221,6 @@ export class OdspServiceContainer<TData>
 		if (resolvedUrl === undefined || !isOdspResolvedUrl(resolvedUrl)) {
 			throw new Error("Resolved Url unexpectedly missing or not an ODSP URL!");
 		}
-		this.id = resolvedUrl.itemId;
-
-		return this as typeof this & { id: string };
+		return resolvedUrl.itemId;
 	}
 }
