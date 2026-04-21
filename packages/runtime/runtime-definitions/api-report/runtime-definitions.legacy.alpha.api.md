@@ -80,6 +80,7 @@ export interface DetachedAttributionKey {
 
 // @alpha @sealed
 export interface FluidContainer<TData = unknown> extends DataStoreCreator, ErasedBaseType<readonly ["FluidContainer", TData]> {
+    close(): void;
     readonly data: TData;
     readonly id?: string | undefined;
 }

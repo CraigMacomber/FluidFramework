@@ -466,6 +466,7 @@ export interface IRuntime extends IDisposable {
     createSummary(blobRedirectTable?: Map<string, string>): ISummaryTree;
     getEntryPoint(): Promise<FluidObject>;
     getPendingLocalState(props?: IGetPendingLocalStateProps): unknown;
+    notifyClosed?(): void;
     notifyOpReplay?(message: ISequencedDocumentMessage): Promise<void>;
     process(message: ISequencedDocumentMessage, local: boolean): any;
     processSignal(message: any, local: boolean): any;

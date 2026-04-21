@@ -2400,6 +2400,10 @@ export class ContainerRuntime
 		}
 	}
 
+	public notifyClosed(): void {
+		this.garbageCollector.close();
+	}
+
 	public dispose(error?: Error): void {
 		if (this._disposed) {
 			return;

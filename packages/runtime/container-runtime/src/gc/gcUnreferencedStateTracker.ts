@@ -180,6 +180,14 @@ export class UnreferencedStateTracker {
 	}
 
 	/**
+	 * Cancel all timers without resetting the tracked state. Used when the container closes but
+	 * the state should remain inspectable.
+	 */
+	public cancelTimers(): void {
+		this.clearTimers();
+	}
+
+	/**
 	 * Stop tracking this node. Reset the unreferenced timers and state, if any.
 	 */
 	public stopTracking(): void {
