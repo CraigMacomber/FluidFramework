@@ -109,6 +109,12 @@ export interface DataStoreOptions<in out TRoot extends IFluidLoadable, out TOutp
 
 	/**
 	 * Create the initial content of the datastore, and return the root shared object.
+	 * @privateRemarks
+	 * TODO:
+	 * This requires the caller to produce a single root shared object (which is keyed by {@link rootSharedObjectId}).
+	 * This should be fine for new code, but code migrated from legacy APIs might need more flexibility.
+	 * Such use-cases could be accommodated providing a legacy alternative to `dataStoreKind` where `instantiateFirstTime` and `view` directly expose access to named root shared objects.
+	 * This should be easy to implement, but is currently not included.
 	 */
 	instantiateFirstTime(
 		rootCreator: SharedObjectCreator<TRoot>,
@@ -240,5 +246,4 @@ export interface SharedObjectCreator<TConstraint = IFluidLoadable> {
  * @sealed
  * @alpha
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface DataStoreContext extends SharedObjectCreator {}

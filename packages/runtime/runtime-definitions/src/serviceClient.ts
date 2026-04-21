@@ -20,6 +20,16 @@ import type {
 import type { IFluidDataStoreFactory } from "./dataStoreFactory.js";
 import { registryLookup, type Registry, type RegistryKey } from "./registry.js";
 
+/*
+ * This file defines the public API for the ServiceClient and related types.
+ *
+ * TODO:
+ * Currently this API surface expect all code using it together to be using a singly copy of the Fluid Framework client packages.
+ *
+ * Before stabilizing any of this past beta, it should be evaluated if this requirement needs to be relaxed, and if so how to do that.
+ * Regardless of if its relaxed or not, what ever rules are put in place should be runtime and compile time enforced as much as possible.
+ */
+
 /**
  * Options for configuring a {@link ServiceClient}.
  * @remarks
