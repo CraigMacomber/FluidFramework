@@ -63,6 +63,20 @@ interface backCompat_ContainerRuntime {
 	): Promise<ContainerRuntime>;
 }
 
+// loadRuntime API before commit 3ee4253aa98: took registryEntries instead of registry.
+interface backCompat_ContainerRuntime_loadRuntime {
+	loadRuntime(params: {
+		context: IContainerContext;
+		registryEntries: NamedFluidDataStoreRegistryEntries;
+		existing: boolean;
+		requestHandler?: (request: IRequest, runtime: IContainerRuntime) => Promise<IResponse>;
+		provideEntryPoint: (containerRuntime: IContainerRuntime) => Promise<FluidObject>;
+		runtimeOptions?: IContainerRuntimeOptionsInternal;
+		containerScope?: FluidObject;
+		minVersionForCollab?: MinimumVersionForCollab;
+	}): Promise<ContainerRuntime>;
+}
+
 /**
  * Create a container runtime factory class that allows you to set runtime options
  * @internal
@@ -172,14 +186,40 @@ export const createTestContainerRuntimeFactory = (
 			// This usage of `containerRuntimeCtor.loadRuntime`, an `@internal` API, called on past versions of this package,
 			// adds an extra constraint that makes changing that API more difficult than it otherwise would be.
 			// Actual customers / apps should not be dependent on stability of this API, but this code is, at least for now.
-			return containerRuntimeCtor.loadRuntime({
+			const registryEntries: NamedFluidDataStoreRegistryEntries = [
+				["default", Promise.resolve(this.dataStoreFactory)],
+				[this.type, Promise.resolve(this.dataStoreFactory)],
+			];
+			// eslint-disable-next-line import-x/no-deprecated
+			const requestHandler = buildRuntimeRequestHandler(
+				getDefaultObject,
+				...this.requestHandlers,
+			);
+
+			// Use loadRuntime2 is present.
+			if ("loadRuntime2" in containerRuntimeCtor) {
+				const result = await containerRuntimeCtor.loadRuntime2({
+					context,
+					registry: new FluidDataStoreRegistry(registryEntries),
+					requestHandler,
+					provideEntryPoint,
+					runtimeOptions: this.runtimeOptions,
+					containerScope: context.scope,
+					existing,
+					minVersionForCollab: this.minVersionForCollab,
+				});
+				if (result.runtime !== undefined) {
+					return result.runtime;
+				}
+				// Fall back to old API (before https://github.com/microsoft/FluidFramework/commit/bd657fbd726a0d55605ca4d8c2e643b3945abdca ) if new API is present.
+				return result as unknown as ContainerRuntime;
+			}
+
+			// Old loadRuntime (pre https://github.com/microsoft/FluidFramework/commit/de6495a08e4a9385cdfffbc904793c8fb89a23c9) takes registryEntries; new takes a pre-constructed registry.
+			return (containerRuntimeCtor as backCompat_ContainerRuntime_loadRuntime).loadRuntime({
 				context,
-				registry: new FluidDataStoreRegistry([
-					["default", Promise.resolve(this.dataStoreFactory)],
-					[this.type, Promise.resolve(this.dataStoreFactory)],
-				]),
-				// eslint-disable-next-line import-x/no-deprecated
-				requestHandler: buildRuntimeRequestHandler(getDefaultObject, ...this.requestHandlers),
+				registryEntries,
+				requestHandler,
 				provideEntryPoint,
 				runtimeOptions: this.runtimeOptions,
 				containerScope: context.scope,
