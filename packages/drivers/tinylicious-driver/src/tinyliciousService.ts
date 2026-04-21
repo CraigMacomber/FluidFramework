@@ -51,11 +51,6 @@ import {
 	InsecureTinyliciousUrlResolver,
 } from "./insecureTinyliciousUrlResolver.js";
 
-const defaultMinVersionForCollab: MinimumVersionForCollab = "2.0.0";
-const defaultServiceOptions: ServiceOptions = {
-	minVersionForCollab: defaultMinVersionForCollab,
-};
-
 /**
  * Options for configuring a {@link createTinyliciousServiceClient}.
  * @alpha
@@ -83,7 +78,7 @@ export interface TinyliciousServiceOptions extends ServiceOptions {
  * @alpha
  */
 export function createTinyliciousServiceClient(
-	options: TinyliciousServiceOptions = defaultServiceOptions,
+	options: TinyliciousServiceOptions,
 ): ServiceClient {
 	return new TinyliciousServiceClientImpl(options);
 }
@@ -242,7 +237,7 @@ export class TinyliciousServiceContainer<TData>
 		root: DataStoreKind<T>,
 	): Promise<TinyliciousServiceContainer<T>> {
 		const loaderOptions = makeContainerLoaderOptions(options);
-		const minVersionForCollab = options.minVersionForCollab ?? defaultMinVersionForCollab;
+		const minVersionForCollab = options.minVersionForCollab;
 
 		const container: IContainer = await createDetachedContainer({
 			codeDetails: { package: "no-dynamic-package", config: {} },
@@ -265,7 +260,7 @@ export class TinyliciousServiceContainer<TData>
 		id: string,
 	): Promise<TinyliciousServiceContainer<T> & FluidContainerAttached<T>> {
 		const loaderOptions = makeContainerLoaderOptions(options);
-		const minVersionForCollab = options.minVersionForCollab ?? defaultMinVersionForCollab;
+		const minVersionForCollab = options.minVersionForCollab;
 
 		const containerInner = await loadExistingContainer({
 			request: { url: id },

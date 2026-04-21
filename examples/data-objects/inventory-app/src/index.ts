@@ -28,7 +28,7 @@ const service =
 					tokenProvider: new InsecureTinyliciousTokenProvider(),
 				},
 			})
-		: createTinyliciousServiceClient();
+		: createTinyliciousServiceClient({ minVersionForCollab: "2.100.0" });
 
 const id = location.hash.slice(1);
 let attached: FluidContainerAttached<TreeView<typeof Inventory>>;

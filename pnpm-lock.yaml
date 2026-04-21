@@ -3835,6 +3835,9 @@ importers:
       '@fluidframework/build-tools':
         specifier: catalog:buildTools
         version: 0.64.0(@types/node@22.19.17)
+      '@fluidframework/devtools':
+        specifier: workspace:~
+        version: link:../../../packages/tools/devtools/devtools
       '@fluidframework/eslint-config-fluid':
         specifier: catalog:eslint
         version: 9.0.0(@typescript-eslint/utils@8.56.1(eslint@9.39.1(jiti@2.6.1))(typescript@5.4.5))(eslint@9.39.1(jiti@2.6.1))(typescript@5.4.5)
@@ -15997,6 +16000,9 @@ importers:
       '@fluidframework/fluid-static':
         specifier: workspace:~
         version: link:../../../framework/fluid-static
+      '@fluidframework/runtime-definitions':
+        specifier: workspace:~
+        version: link:../../../runtime/runtime-definitions
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: ^0.18.2

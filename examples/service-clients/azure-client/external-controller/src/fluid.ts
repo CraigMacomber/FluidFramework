@@ -46,4 +46,4 @@ export const service =
 					tokenProvider: new InsecureTinyliciousTokenProvider(),
 				},
 			})
-		: createTinyliciousServiceClient();
+		: createTinyliciousServiceClient({ minVersionForCollab: "2.100.0" });

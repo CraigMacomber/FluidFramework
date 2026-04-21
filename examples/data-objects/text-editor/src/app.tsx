@@ -3,6 +3,7 @@
  * Licensed under the MIT License.
  */
 
+import { createDevtoolsLogger, initializeDevtoolsAlpha } from "@fluidframework/devtools/alpha";
 import {
 	FormattedMainView,
 	QuillMainView as PlainQuillView,
@@ -18,12 +19,18 @@ import {
 	PlainTextMainView,
 	// eslint-disable-next-line import-x/no-internal-modules
 } from "@fluidframework/react/internal";
-// eslint-disable-next-line import-x/no-internal-modules
-import { createTinyliciousServiceClient } from "@fluidframework/tinylicious-driver/internal";
+import {
+	createTinyliciousServiceClient,
+	type TinyliciousServiceOptions,
+} from "@fluidframework/tinylicious-driver/alpha";
 // eslint-disable-next-line import-x/no-internal-modules
 import { FormattedTextAsTree } from "@fluidframework/tree/internal";
 import { SchemaFactory, TreeViewConfiguration, type TreeView } from "fluid-framework";
-import { TextAsTree, treeDataStoreKind } from "fluid-framework/alpha";
+import {
+	TextAsTree,
+	treeDataStoreKind,
+	type FluidContainerAttached,
+} from "fluid-framework/alpha";
 // eslint-disable-next-line import-x/no-internal-modules, import-x/no-unassigned-import
 import "quill/dist/quill.snow.css";
 import { type FC, useEffect, useMemo, useState } from "react";
@@ -70,37 +77,64 @@ interface DualUserViews {
  * for side-by-side collaboration testing in a single browser tab.
  */
 async function initFluid(): Promise<DualUserViews> {
-	const service1 = createTinyliciousServiceClient();
+	// Initialize telemetry logger for use with Devtools
+	const devtoolsLogger = createDevtoolsLogger();
 
-	let containerId: string;
-	let user1View: TreeView<typeof TextEditorRoot>;
+	const options: TinyliciousServiceOptions = {
+		minVersionForCollab: "2.100.0",
+		// TODO: logger
+		// TODO: user ids.
+	};
 
+	const service1 = createTinyliciousServiceClient(options);
+
+	let user1Container: FluidContainerAttached<TreeView<typeof TextEditorRoot>>;
 	if (location.hash) {
+		// Load existing document for both users
 		const rawContainerId = location.hash.slice(1);
+		// Basic validation for container ID from URL hash before making network requests
 		const isValidContainerId =
 			rawContainerId.length > 0 && /^[\dA-Za-z-]{3,64}$/.test(rawContainerId);
 		if (!isValidContainerId) {
+			console.error(`Invalid container ID in URL hash: "${rawContainerId}"`);
 			throw new Error(
 				"Invalid container ID in URL hash. Expected 3-64 alphanumeric or '-' characters.",
 			);
 		}
-		containerId = rawContainerId;
-		const container = await service1.loadContainer(containerId, textEditorKind);
-		user1View = container.data;
-	} else {
-		const container = await service1.createContainer(textEditorKind);
-		const attached = await container.attach();
-		containerId = attached.id;
-		// eslint-disable-next-line require-atomic-updates
-		location.hash = containerId;
-		user1View = attached.data;
-	}
 
-	const service2 = createTinyliciousServiceClient();
+		// User 1 connects to existing document
+		user1Container = await service1.loadContainer(rawContainerId, textEditorKind);
+	} else {
+		// User 1 creates the document
+		const container = await service1.createContainer(textEditorKind);
+		user1Container = await container.attach();
+		// eslint-disable-next-line require-atomic-updates
+		location.hash = user1Container.id;
+	}
+	const containerId = user1Container.id;
+
+	const service2 = createTinyliciousServiceClient(options);
+
+	// User 2 connects to the loaded document
 	const user2Container = await service2.loadContainer(containerId, textEditorKind);
 
+	// Initialize Devtools
+	await initializeDevtoolsAlpha({
+		logger: devtoolsLogger,
+		initialContainers: [
+			{
+				container: user1Container,
+				containerKey: "User 1 Container",
+			},
+			{
+				container: user2Container,
+				containerKey: "User 2 Container",
+			},
+		],
+	});
+
 	return {
-		user1: user1View,
+		user1: user1Container.data,
 		user2: user2Container.data,
 		containerId,
 	};
@@ -139,12 +173,15 @@ const UserPanel: FC<{
 	viewType: ViewType;
 	treeView: TreeView<typeof TextEditorRoot>;
 }> = ({ label, color, viewType, treeView }) => {
+	// Create undo/redo stack for this user's tree view
 	const undoRedo = useMemo(() => new UndoRedoStacks(treeView.events), [treeView.events]);
 
+	// Cleanup on unmount
 	useEffect(() => {
 		return () => undoRedo.dispose();
 	}, [undoRedo]);
 
+	// TODO: handle root invalidation, schema upgrades and out of schema documents.
 	const renderView = (): JSX.Element => {
 		const root = treeView.root;
 		return viewLabels[viewType].component(root, treeView, undoRedo);

@@ -5,7 +5,7 @@
 ```ts
 
 // @alpha
-export function createTinyliciousServiceClient(options?: TinyliciousServiceOptions): ServiceClient;
+export function createTinyliciousServiceClient(options: TinyliciousServiceOptions): ServiceClient;
 
 // @alpha
 export class InsecureTinyliciousTokenProvider implements ITokenProvider {

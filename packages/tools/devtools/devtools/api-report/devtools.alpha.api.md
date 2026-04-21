@@ -21,6 +21,17 @@ export interface DevtoolsProps {
     readonly logger?: IDevtoolsLogger;
 }
 
+// @alpha @sealed
+export interface FluidContainerDevtoolsProps extends HasContainerKey {
+    readonly container: FluidContainer;
+}
+
+// @alpha @sealed
+export interface FluidDevtoolsProps {
+    readonly initialContainers?: FluidContainerDevtoolsProps[];
+    readonly logger?: IDevtoolsLogger;
+}
+
 // @beta @sealed @system
 export interface HasContainerKey {
     readonly containerKey: ContainerKey;
@@ -36,7 +47,15 @@ export interface IDevtools extends IDisposable {
 export interface IDevtoolsLogger extends ITelemetryBaseLogger {
 }
 
+// @alpha @sealed
+export interface IFluidDevtools extends IDevtools {
+    registerFluidContainerDevtools(props: FluidContainerDevtoolsProps): Promise<void>;
+}
+
 // @beta
 export function initializeDevtools(props: DevtoolsProps): IDevtools;
+
+// @alpha
+export function initializeDevtoolsAlpha(props: FluidDevtoolsProps): Promise<IFluidDevtools>;
 
 ```
