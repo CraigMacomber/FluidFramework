@@ -11,6 +11,7 @@ import {
 import { ContainerRuntime } from "@fluidframework/container-runtime/internal";
 import type {
 	IConfigProviderBase,
+	IRequest,
 	ITelemetryBaseLogger,
 } from "@fluidframework/core-interfaces";
 import { assert } from "@fluidframework/core-utils/internal";
@@ -26,7 +27,6 @@ import {
 	OdspDriverUrlResolver,
 	createOdspCreateContainerRequest,
 	createOdspUrl,
-	isOdspResolvedUrl,
 } from "@fluidframework/odsp-driver/internal";
 import type { OdspResourceTokenFetchOptions } from "@fluidframework/odsp-driver-definitions/internal";
 import type {
@@ -206,20 +206,13 @@ export class OdspServiceContainer<TData>
 		super(registry, options, container, data, id);
 	}
 
-	protected async attachCore(): Promise<string> {
+	protected createAttachRequest(): IRequest {
 		const { connection } = this.options;
-		const createNewRequest = createOdspCreateContainerRequest(
+		return createOdspCreateContainerRequest(
 			connection.siteUrl,
 			connection.driveId,
 			connection.filePath,
 			uuid(),
 		);
-		await this.container.attach(createNewRequest);
-
-		const resolvedUrl = this.container.resolvedUrl;
-		if (resolvedUrl === undefined || !isOdspResolvedUrl(resolvedUrl)) {
-			throw new Error("Resolved Url unexpectedly missing or not an ODSP URL!");
-		}
-		return resolvedUrl.itemId;
 	}
 }

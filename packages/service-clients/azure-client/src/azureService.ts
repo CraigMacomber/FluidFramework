@@ -11,6 +11,7 @@ import {
 import { ContainerRuntime } from "@fluidframework/container-runtime/internal";
 import type {
 	IConfigProviderBase,
+	IRequest,
 	ITelemetryBaseLogger,
 } from "@fluidframework/core-interfaces";
 import { assert } from "@fluidframework/core-utils/internal";
@@ -195,15 +196,8 @@ export class AzureServiceContainer<TData>
 		super(registry, options, container, data, id);
 	}
 
-	protected async attachCore(): Promise<string> {
+	protected createAttachRequest(): IRequest {
 		const { connection } = this.options;
-		await this.container.attach(
-			createAzureCreateNewRequest(connection.endpoint, getTenantId(connection)),
-		);
-
-		if (this.container.resolvedUrl === undefined) {
-			throw new Error("Resolved Url unexpectedly missing!");
-		}
-		return this.container.resolvedUrl.id;
+		return createAzureCreateNewRequest(connection.endpoint, getTenantId(connection));
 	}
 }

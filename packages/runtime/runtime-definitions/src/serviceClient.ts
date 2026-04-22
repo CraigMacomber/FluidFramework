@@ -4,11 +4,13 @@
  */
 
 import type { IAudience } from "@fluidframework/container-definitions";
-import type { IContainer } from "@fluidframework/container-definitions/internal";
+import { AttachState, type IContainer } from "@fluidframework/container-definitions/internal";
+import type { IRequest } from "@fluidframework/core-interfaces";
 import {
 	type ErasedBaseType,
 	ErasedTypeImplementation,
 } from "@fluidframework/core-interfaces/internal";
+import { assert } from "@fluidframework/core-utils/internal";
 import { UsageError } from "@fluidframework/telemetry-utils/internal";
 
 import type { MinimumVersionForCollab } from "./compatibilityDefinitions.js";
@@ -28,6 +30,13 @@ import { registryLookup, type Registry, type RegistryKey } from "./registry.js";
  *
  * Before stabilizing any of this past beta, it should be evaluated if this requirement needs to be relaxed, and if so how to do that.
  * Regardless of if its relaxed or not, what ever rules are put in place should be runtime and compile time enforced as much as possible.
+ *
+ * TODO:
+ * Fault isolation should be considered in this API design.
+ * When are exceptions recoverable and how?
+ * Likely we can fault isolate exceptions to containers in most cases,
+ * and containers can indicate their status by being closed or disposed.
+ * Non fatal errors should not be exceptions.
  */
 
 /**
@@ -303,9 +312,12 @@ export interface ServiceClient {
  */
 export abstract class ServiceContainerBase<TData, TOptions = unknown>
 	extends ErasedTypeImplementation<FluidContainer<TData>>
-	implements FluidContainer<TData>
+	implements FluidContainerWithService<TData>
 {
-	private attaching = false;
+	/**
+	 * True if an attempt to attach has been started. This is used to prevent multiple concurrent attach attempts.
+	 */
+	private startedAttach = false;
 
 	protected constructor(
 		public readonly registry: Registry<Promise<DataStoreKind<TData>>>,
@@ -318,24 +330,45 @@ export abstract class ServiceContainerBase<TData, TOptions = unknown>
 	}
 
 	/**
-	 * Performs the service-specific work of attaching this container.
-	 * @returns The container's id as assigned by the service after attachment.
+	 * Creates the service-specific request used to attach this container.
 	 * @remarks
 	 * Called by {@link ServiceContainerBase.attach} after validating that no attach is already in progress.
-	 * Implementations should call `this.container.attach(request)` with a service-appropriate request and
-	 * return the resolved container id.
 	 */
-	protected abstract attachCore(): Promise<string>;
+	protected abstract createAttachRequest(): IRequest;
+
+	/**
+	 * Extracts the container id from {@link ServiceContainerBase.container}'s resolved URL after attachment.
+	 * @remarks
+	 * Override when the service's resolved URL stores the id in a non-standard field.
+	 */
+	protected getContainerId(): string {
+		if (this.container.resolvedUrl === undefined) {
+			throw new Error("Resolved URL unexpectedly missing!");
+		}
+		return this.container.resolvedUrl.id;
+	}
 
 	public async attach(): Promise<FluidContainerAttached<TData>> {
 		if (this.id !== undefined) {
 			throw new UsageError("Container already attached");
 		}
-		if (this.attaching) {
+		if (this.startedAttach) {
 			throw new UsageError("Container attach already in progress");
 		}
-		this.attaching = true;
-		this.id = await this.attachCore();
+
+		assert(this.container.attachState === AttachState.Detached, "Container not detached");
+		this.startedAttach = true;
+
+		// TODO: support setting where attach can fail, and leave the container in a valid (non-closed) state.
+		// Likely the best way to support this is by adding a `tryAttach(request): Promise<FluidContainerAttached<TData> | undefined>`.
+
+		await this.container.attach(this.createAttachRequest());
+		// This type cast is needed to work around the fact that TypeScript assumes the "attach" methods can't modify "attachState".
+		assert(
+			this.container.attachState === (AttachState.Attached as AttachState),
+			"Container failed to attach",
+		);
+		this.id = this.getContainerId();
 		return this as typeof this & { id: string };
 	}
 
@@ -344,7 +377,11 @@ export abstract class ServiceContainerBase<TData, TOptions = unknown>
 	}
 
 	public getRuntime(): IContainerRuntimeBase {
-		// TODO: Do something better
+		interface IContainerWithRuntime extends IContainer {
+			readonly runtime: IContainerRuntimeBase;
+		}
+
+		// TODO: Do something more type safe here.
 		const container = this.container as IContainerWithRuntime;
 		return container.runtime;
 	}
@@ -358,17 +395,13 @@ export abstract class ServiceContainerBase<TData, TOptions = unknown>
 		DataStoreKindImplementation.narrowGeneric(kind);
 		const containerRuntime = this.getRuntime();
 
-		// TODO: Do something better
+		// TODO: There should probably be a higher level more type safe way to do this.
 		const context = containerRuntime.createDetachedDataStore([kind.type]);
 		const channel = await kind.instantiateDataStore(context, false);
 		const dataStore = await context.attachRuntime(kind, channel);
 		const entryPoint = await dataStore.entryPoint.get();
 		return entryPoint as T;
 	}
-}
-
-interface IContainerWithRuntime extends IContainer {
-	readonly runtime: IContainerRuntimeBase;
 }
 
 /**

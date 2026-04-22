@@ -9,6 +9,7 @@ import {
 	loadExistingContainer,
 } from "@fluidframework/container-loader/internal";
 import { ContainerRuntime } from "@fluidframework/container-runtime/internal";
+import type { IRequest } from "@fluidframework/core-interfaces";
 import { assert } from "@fluidframework/core-utils/internal";
 import type { IUrlResolver } from "@fluidframework/driver-definitions/internal";
 import {
@@ -182,12 +183,7 @@ export class TinyliciousServiceContainer<TData>
 		super(registry, options, container, data, id);
 	}
 
-	protected async attachCore(): Promise<string> {
-		await this.container.attach(createTinyliciousCreateNewRequest());
-
-		if (this.container.resolvedUrl === undefined) {
-			throw new Error("Resolved URL unexpectedly missing!");
-		}
-		return this.container.resolvedUrl.id;
+	protected createAttachRequest(): IRequest {
+		return createTinyliciousCreateNewRequest();
 	}
 }

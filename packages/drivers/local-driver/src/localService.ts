@@ -47,6 +47,11 @@ const defaultServiceOptions: ServiceOptions = { minVersionForCollab: pkgVersion 
  *
  * @remarks
  * Since all collaborators are in the same process, minVersionForCollab can be omitted and will default to the current version.
+ * @privateRemarks
+ * TODO: We should provide a way to extract (for potential serialization as test data) and load documents into this service.
+ * This is needed to use this API surface for testing reference documents.
+ * Ideally we would provide a service agnostic way to to the export, but likely only support loading them into the local service.
+ * This can be done via a an API on FluidContainer (or a free function taking one) to do the export, then adding a service specific API to load from the export format and return the ID of the loaded document.
  *
  * @alpha
  */
@@ -246,13 +251,8 @@ export class EphemeralServiceContainer<TData>
 		updateContainers();
 	}
 
-	protected async attachCore(): Promise<string> {
+	protected createAttachRequest(): IRequest {
 		const documentId = (documentIdCounter++).toString();
-		await this.container.attach(createLocalResolverCreateNewRequest(documentId));
-
-		if (this.container.resolvedUrl === undefined) {
-			throw new Error("Resolved URL unexpectedly missing!");
-		}
-		return this.container.resolvedUrl.id;
+		return createLocalResolverCreateNewRequest(documentId);
 	}
 }
