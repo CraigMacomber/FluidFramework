@@ -3,6 +3,8 @@
  * Licensed under the MIT License.
  */
 
+import { fail } from "node:assert";
+
 import { IContainerContext, IRuntime } from "@fluidframework/container-definitions/internal";
 import {
 	ContainerRuntime,
@@ -196,36 +198,36 @@ export const createTestContainerRuntimeFactory = (
 				...this.requestHandlers,
 			);
 
-			// Use loadRuntime2 is present.
-			if ("loadRuntime2" in containerRuntimeCtor) {
-				const result = await containerRuntimeCtor.loadRuntime2({
-					context,
-					registry: new FluidDataStoreRegistry(registryEntries),
-					requestHandler,
-					provideEntryPoint,
-					runtimeOptions: this.runtimeOptions,
-					containerScope: context.scope,
-					existing,
-					minVersionForCollab: this.minVersionForCollab,
-				});
-				if (result.runtime !== undefined) {
-					return result.runtime;
-				}
-				// Fall back to old API (before https://github.com/microsoft/FluidFramework/commit/bd657fbd726a0d55605ca4d8c2e643b3945abdca ) if new API is present.
-				return result as unknown as ContainerRuntime;
+			const loadRuntimeVersion = containerRuntimeCtor.loadRuntimeAPIVersion ?? 1;
+			switch (loadRuntimeVersion) {
+				case 1:
+					// Old loadRuntime: took registryEntries instead of registry.
+					return (
+						containerRuntimeCtor as unknown as backCompat_ContainerRuntime_loadRuntime
+					).loadRuntime({
+						context,
+						registryEntries,
+						requestHandler,
+						provideEntryPoint,
+						runtimeOptions: this.runtimeOptions,
+						containerScope: context.scope,
+						existing,
+						minVersionForCollab: this.minVersionForCollab,
+					});
+				case 2:
+					return containerRuntimeCtor.loadRuntime({
+						context,
+						registry: new FluidDataStoreRegistry(registryEntries),
+						requestHandler,
+						provideEntryPoint,
+						runtimeOptions: this.runtimeOptions,
+						containerScope: context.scope,
+						existing,
+						minVersionForCollab: this.minVersionForCollab,
+					});
+				default:
+					fail();
 			}
-
-			// Old loadRuntime (pre https://github.com/microsoft/FluidFramework/commit/de6495a08e4a9385cdfffbc904793c8fb89a23c9) takes registryEntries; new takes a pre-constructed registry.
-			return (containerRuntimeCtor as backCompat_ContainerRuntime_loadRuntime).loadRuntime({
-				context,
-				registryEntries,
-				requestHandler,
-				provideEntryPoint,
-				runtimeOptions: this.runtimeOptions,
-				containerScope: context.scope,
-				existing,
-				minVersionForCollab: this.minVersionForCollab,
-			});
 		}
 	};
 };

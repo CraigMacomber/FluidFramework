@@ -917,6 +917,8 @@ export class ContainerRuntime
 	 * {@link LoadContainerRuntimeParams} except internal, while still having layer compat obligations.
 	 * @privateRemarks
 	 * Despite this being `@internal`, `@fluidframework/test-utils` uses it in `createTestContainerRuntimeFactory` and assumes multiple versions of the package expose the same API.
+	 * To enable this code to know what version of this API it should use, loadRuntimeAPIVersion has been added.
+	 * This is a workaround for the relevant code in test-utils not tracking the package version, so it can't special case it off of that.
 	 *
 	 * Also note that `mixinAttributor` from `@fluid-experimental/attributor` overrides this function:
 	 * that will have to be updated if changing the signature of this function as well.
@@ -933,6 +935,12 @@ export class ContainerRuntime
 	): Promise<ContainerRuntime> {
 		return ContainerRuntime.loadRuntime2(params).then((r) => r.runtime);
 	}
+
+	/**
+	 * Hack to allow test-utils to detect which version of loadRuntime API to expect.
+	 * See note in loadRuntime's private remarks.
+	 */
+	public static readonly loadRuntimeAPIVersion: number | undefined = 2;
 
 	/**
 	 * Load the stores from a snapshot and returns an object containing the runtime.
