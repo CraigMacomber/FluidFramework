@@ -21,7 +21,7 @@ import {
 	type ITree,
 } from "../simple-tree/index.js";
 import { instantiateTreeFirstTime, treeDataStoreKind } from "../treeDataStore.js";
-import { SharedTree } from "../treeFactory.js";
+import { SharedTree, SharedTreeAlpha } from "../treeFactory.js";
 
 describe("treeDataStore", () => {
 	afterEach(async () => {
@@ -128,10 +128,10 @@ describe("treeDataStore", () => {
 			type: "my-tree",
 			registry: async () => {
 				const module = await import("../treeFactory.js");
-				return (type) => module.SharedTree;
+				return (type) => module.SharedTreeAlpha;
 			},
 			instantiateFirstTime: async (creator) => {
-				const { SharedTree: SharedTreeFactory } = await import("../treeFactory.js");
+				const { SharedTreeAlpha: SharedTreeFactory } = await import("../treeFactory.js");
 				return creator.create(SharedTreeFactory);
 			},
 			view: async (tree) => tree,
@@ -179,9 +179,9 @@ describe("treeDataStore", () => {
 		// A DataStore which is an initialized ITree with the above config.
 		const MyTree = dataStoreKind<ITree, ITree>({
 			type: "my-tree",
-			registry: async () => () => SharedTree,
+			registry: async () => () => SharedTreeAlpha,
 			async instantiateFirstTime(rootCreator, creator): Promise<ITree> {
-				return instantiateTreeFirstTime(rootCreator, creator, SharedTree, {
+				return instantiateTreeFirstTime(rootCreator, creator, SharedTreeAlpha, {
 					config,
 					initializer: () => 1,
 				});

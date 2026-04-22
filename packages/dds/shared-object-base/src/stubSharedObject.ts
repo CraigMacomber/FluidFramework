@@ -10,7 +10,6 @@ import type {
 } from "@fluidframework/runtime-definitions/internal";
 
 import { dataStoreKind, sharedObjectRegistryFromIterable } from "./dataStoreKind.js";
-import type { ISharedObjectKind, SharedObjectKind } from "./sharedObject.js";
 import {
 	type SharedKernel,
 	type SharedKernelFactory,
@@ -39,7 +38,7 @@ const statelessKernelFactory: SharedKernelFactory<object> = {
 	},
 };
 
-const statelessSharedObjectKind = makeSharedObjectKind({
+const statelessSharedObjectKind = makeSharedObjectKind<IFluidLoadable>({
 	type: "com.microsoft.fluid.test.stateless",
 	attributes: {
 		type: "com.microsoft.fluid.test.stateless",
@@ -47,7 +46,7 @@ const statelessSharedObjectKind = makeSharedObjectKind({
 	},
 	telemetryContextPrefix: "test_stateless_",
 	factory: statelessKernelFactory,
-}) as unknown as ISharedObjectKind<IFluidLoadable> & SharedObjectKind<IFluidLoadable>;
+});
 
 /**
  * Creates a trivial stub {@link @fluidframework/runtime-definitions#DataStoreKind} backed by a

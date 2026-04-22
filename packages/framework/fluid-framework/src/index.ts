@@ -100,6 +100,7 @@ export type {
 	SharedObjectCreator,
 	SharedObjectRegistry,
 	SharedObjectKey,
+	SharedObjectKindAlpha,
 	DataStoreContext,
 } from "@fluidframework/shared-object-base/internal";
 export type {

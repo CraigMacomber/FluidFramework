@@ -7,12 +7,6 @@
 // @beta @input
 export type MinimumVersionForCollab = `${1 | 2}.${bigint}.${bigint}` | `${1 | 2}.${bigint}.${bigint}-${string}`;
 
-// @public @sealed @input
-export interface RegistryKey<TOut, TIn = unknown> {
-    adapt(value: TIn): TOut;
-    readonly type: string;
-}
-
 // (No @packageDocumentation comment for this package)
 
 ```

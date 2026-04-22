@@ -465,7 +465,7 @@ export type PackagePath = readonly string[];
 // @alpha @input
 export type Registry<T> = (type: string) => T;
 
-// @public @sealed @input
+// @alpha @sealed @input
 export interface RegistryKey<TOut, TIn = unknown> {
     adapt(value: TIn): TOut;
     readonly type: string;

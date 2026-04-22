@@ -26,7 +26,7 @@ export type Registry<T> = (type: string) => T;
  * This is currently input and sealed, meaning effectively type erased since the design might change.
  * @input
  * @sealed
- * @public
+ * @alpha
  */
 export interface RegistryKey<TOut, TIn = unknown> {
 	/**

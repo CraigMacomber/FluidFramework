@@ -853,12 +853,6 @@ export interface ReadonlyArrayNode<out T = TreeNode | TreeLeafValue> extends Rea
 // @beta @system
 export type RecordNodeInsertableData<T extends ImplicitAllowedTypes> = RestrictiveStringRecord<InsertableTreeNodeFromImplicitAllowedTypes<T>>;
 
-// @public @sealed @input
-export interface RegistryKey<TOut, TIn = unknown> {
-    adapt(value: TIn): TOut;
-    readonly type: string;
-}
-
 // @public
 export type ReplaceIEventThisPlaceHolder<L extends any[], TThis> = L extends any[] ? {
     [K in keyof L]: L[K] extends IEventThisPlaceHolder ? TThis : L[K];
@@ -1008,11 +1002,8 @@ export class SchemaUpgrade {
 // @public @system
 type ScopedSchemaName<TScope extends string | undefined, TName extends number | string> = TScope extends undefined ? `${TName}` : `${TScope}.${TName}`;
 
-// @public @input
-export type SharedObjectKey<T> = RegistryKey<SharedObjectKind<T>, SharedObjectKind>;
-
 // @public @sealed
-export interface SharedObjectKind<out TSharedObject = unknown> extends SharedObjectKey<TSharedObject>, ErasedType<readonly ["SharedObjectKind", TSharedObject]> {
+export interface SharedObjectKind<out TSharedObject = unknown> extends ErasedType<readonly ["SharedObjectKind", TSharedObject]> {
     is(value: IFluidLoadable): value is IFluidLoadable & TSharedObject;
 }
 

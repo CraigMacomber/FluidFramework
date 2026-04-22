@@ -5,13 +5,16 @@
 
 import type { IFluidLoadable } from "@fluidframework/core-interfaces";
 import type { DataStoreKind } from "@fluidframework/runtime-definitions/internal";
-import type { SharedObjectKey, SharedObjectKind } from "@fluidframework/shared-object-base";
+import type {
+	SharedObjectCreator,
+	SharedObjectKey,
+	SharedObjectRegistry,
+	SharedObjectKindAlpha,
+	DataStoreOptions,
+} from "@fluidframework/shared-object-base/internal";
 import {
-	type SharedObjectCreator,
-	type SharedObjectRegistry,
 	sharedObjectRegistryFromIterable,
 	dataStoreKind,
-	type DataStoreOptions,
 } from "@fluidframework/shared-object-base/internal";
 
 import type {
@@ -21,7 +24,7 @@ import type {
 	TreeView,
 	TreeViewConfiguration,
 } from "./simple-tree/index.js";
-import { SharedTree } from "./treeFactory.js";
+import { SharedTreeAlpha } from "./treeFactory.js";
 
 /**
  * Options for {@link treeDataStoreKind}.
@@ -47,7 +50,7 @@ export interface TreeDataStoreOptions<TSchema extends ImplicitFieldSchema>
 	 * @remarks
 	 * {@link configuredSharedTree} can be used to customize the SharedTree kind used in the registry.
 	 */
-	readonly registry?: Iterable<SharedObjectKind<IFluidLoadable>> | SharedObjectRegistry;
+	readonly registry?: Iterable<SharedObjectKindAlpha<IFluidLoadable>> | SharedObjectRegistry;
 
 	readonly key?: SharedObjectKey<ITree>;
 }
@@ -66,7 +69,7 @@ export function treeDataStoreKind<const TSchema extends ImplicitFieldSchema>(
 	const registry: SharedObjectRegistry =
 		typeof options.registry === "function"
 			? options.registry
-			: sharedObjectRegistryFromIterable([...(options.registry ?? [SharedTree])]);
+			: sharedObjectRegistryFromIterable([...(options.registry ?? [SharedTreeAlpha])]);
 
 	const result = dataStoreKind<TreeView<TSchema>, ITree>({
 		type: options.type,
@@ -78,7 +81,7 @@ export function treeDataStoreKind<const TSchema extends ImplicitFieldSchema>(
 			return instantiateTreeFirstTime(
 				rootCreator,
 				creator,
-				options.key ?? SharedTree,
+				options.key ?? SharedTreeAlpha,
 				options,
 			);
 		},

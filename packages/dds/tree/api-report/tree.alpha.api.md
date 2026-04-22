@@ -1235,6 +1235,9 @@ export class SchemaUpgrade {
 // @public @system
 type ScopedSchemaName<TScope extends string | undefined, TName extends number | string> = TScope extends undefined ? `${TName}` : `${TScope}.${TName}`;
 
+// @alpha
+export const SharedTreeAlpha: SharedObjectKindAlpha<ITree>;
+
 // @alpha @input
 export interface SharedTreeFormatOptions {
     treeEncodeType: TreeCompressionStrategy;
@@ -1792,7 +1795,7 @@ export interface TreeDataStoreOptions<TSchema extends ImplicitFieldSchema> exten
     readonly initializer?: (creator: SharedObjectCreator) => InsertableTreeFieldFromImplicitField<TSchema>;
     // (undocumented)
     readonly key?: SharedObjectKey<ITree>;
-    readonly registry?: Iterable<SharedObjectKind<IFluidLoadable>> | SharedObjectRegistry;
+    readonly registry?: Iterable<SharedObjectKindAlpha<IFluidLoadable>> | SharedObjectRegistry;
 }
 
 // @beta @input

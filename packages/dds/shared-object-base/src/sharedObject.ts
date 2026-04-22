@@ -979,8 +979,7 @@ export interface ISharedObjectKind<TSharedObject> {
  * @public
  */
 export interface SharedObjectKind<out TSharedObject = unknown>
-	extends SharedObjectKey<TSharedObject>,
-		ErasedType<readonly ["SharedObjectKind", TSharedObject]> {
+	extends ErasedType<readonly ["SharedObjectKind", TSharedObject]> {
 	/**
 	 * Check whether an {@link @fluidframework/core-interfaces#IFluidLoadable} is an instance of this shared object kind.
 	 * @remarks This should be used in place of `instanceof` checks for shared objects, as their actual classes are not exported in Fluid's public API.
@@ -999,9 +998,20 @@ export interface SharedObjectKind<out TSharedObject = unknown>
  * TODO: this same key pattern should be applied to SharedObjectKind.
  * TODO: things probably break if "adapt" does anything except throw or return the result from the input promise.
  * @input
- * @public
+ * @alpha
  */
-export type SharedObjectKey<T> = RegistryKey<SharedObjectKind<T>, SharedObjectKind>;
+export type SharedObjectKey<T> = RegistryKey<SharedObjectKindAlpha<T>, SharedObjectKindAlpha>;
+
+/**
+ * A {@link SharedObjectKind} that also implements {@link SharedObjectKey}.
+ * @privateRemarks
+ * All concrete shared object kinds (produced by {@link createSharedObjectKind}) implement this interface.
+ * @sealed
+ * @alpha
+ */
+export interface SharedObjectKindAlpha<out TSharedObject = unknown>
+	extends SharedObjectKind<TSharedObject>,
+		SharedObjectKey<TSharedObject> {}
 
 /**
  * Utility for creating ISharedObjectKind instances.
@@ -1015,8 +1025,23 @@ export type SharedObjectKey<T> = RegistryKey<SharedObjectKind<T>, SharedObjectKi
 export function createSharedObjectKind<TSharedObject>(
 	factory: (new () => IChannelFactory<TSharedObject>) & { readonly Type: string },
 ): ISharedObjectKind<TSharedObject> & SharedObjectKind<TSharedObject> {
+	return createSharedObjectKindAlpha(factory);
+}
+
+/**
+ * Utility for creating ISharedObjectKind instances.
+ * @remarks
+ * This takes in a class which implements IChannelFactory,
+ * and uses it to return a a single value which is intended to be used as the API entry point for the corresponding shared object type.
+ * The returned value implements {@link ISharedObjectKind} for use in the encapsulated API, as well as the type erased {@link SharedObjectKind} used by the declarative API.
+ * See {@link @fluidframework/fluid-static#ContainerSchema} for how this is used in the declarative API.
+ * @internal
+ */
+export function createSharedObjectKindAlpha<TSharedObject>(
+	factory: (new () => IChannelFactory<TSharedObject>) & { readonly Type: string },
+): ISharedObjectKind<TSharedObject> & SharedObjectKindAlpha<TSharedObject> {
 	const result: ISharedObjectKind<TSharedObject> &
-		Omit<SharedObjectKind<TSharedObject>, "brand"> = {
+		Omit<SharedObjectKindAlpha<TSharedObject>, "brand"> = {
 		getFactory(): IChannelFactory<TSharedObject> {
 			return new factory();
 		},
@@ -1031,7 +1056,7 @@ export function createSharedObjectKind<TSharedObject>(
 
 		type: factory.Type,
 
-		adapt: (value: SharedObjectKind): SharedObjectKind<TSharedObject> => {
+		adapt: (value: SharedObjectKindAlpha): SharedObjectKindAlpha<TSharedObject> => {
 			if (value === resultFinal) {
 				return resultFinal;
 			}
@@ -1044,7 +1069,7 @@ export function createSharedObjectKind<TSharedObject>(
 		},
 	};
 
-	const resultFinal = result as typeof result & SharedObjectKind<TSharedObject>;
+	const resultFinal = result as typeof result & SharedObjectKindAlpha<TSharedObject>;
 
 	return resultFinal;
 }

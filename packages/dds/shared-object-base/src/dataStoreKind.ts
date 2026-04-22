@@ -19,7 +19,11 @@ import {
 } from "@fluidframework/runtime-definitions/internal";
 import { UsageError } from "@fluidframework/telemetry-utils/internal";
 
-import type { ISharedObjectKind, SharedObjectKey, SharedObjectKind } from "./sharedObject.js";
+import type {
+	ISharedObjectKind,
+	SharedObjectKey,
+	SharedObjectKindAlpha,
+} from "./sharedObject.js";
 import type { ISharedObject } from "./types.js";
 
 /**
@@ -28,8 +32,8 @@ import type { ISharedObject } from "./types.js";
  * Supports lazy code loading in a limited way (a single lazy load per registry).
  * @privateRemarks
  * TODO: The framework provided SharedObjects should be exposed in a way indistinguishable from custom Sub-DataStores.
- * This can be done by unifying the DataStoreKind and SharedObjectKind types.
- * For now, this would mean having DataStoreKind extend SharedObjectKind, since we can allow a DataStore in all places SharedObjects are allowed,
+ * This can be done by unifying the DataStoreKind and SharedObjectKindAlpha types.
+ * For now, this would mean having DataStoreKind extend SharedObjectKindAlpha, since we can allow a DataStore in all places SharedObjects are allowed,
  * but do not allow SharedObjects at the root.
  * Fixing this, and allowing shared objects at the root (maybe use a trivial wrapper DataStore) could simplifying things, allowing DataStores and Containers to share some types (like how they create detached contents, have registries, have a root etc).
  *
@@ -37,10 +41,10 @@ import type { ISharedObject } from "./types.js";
  * Removal of the IFluidLoadable requirement, and allowing the returned type to expose handles to itself how ever it wants (or not at all) might be viable and simplify typing And allow for strongly typed handles at creation time at least).
  * Maybe when Registry(type) gives a promise, it could instead give a factory which outputs a promise wrapped type? The check that the provided creation key is valid for that factory can be deferred until the promise resolves.
  *
- * Idea: creation key can have an interface that subsets the factory / SharedObjectKind / DataStoreKind so they can be used, or some branded key (string, and/or object with stronger identity what knows the type string) can be used.
+ * Idea: creation key can have an interface that subsets the factory / SharedObjectKindAlpha / DataStoreKind so they can be used, or some branded key (string, and/or object with stronger identity what knows the type string) can be used.
  * Have Key interface contain validation function to check that the factory used (or maybe the value produced from it) is valid for that key.
  * During load, get with validation that simply checks the factory's type string matches the key's type string.
- * When using SharedObjectKind or DataStoreKind, validation can check factory object identity against key.
+ * When using SharedObjectKindAlpha or DataStoreKind, validation can check factory object identity against key.
  *
  * Goal: Mostly unify container, datastore and shared object abstractions.
  * Maybe unify a bit with service client since it also has a way to create detached things with an initialized root then attach them.
@@ -49,20 +53,22 @@ import type { ISharedObject } from "./types.js";
  * @input
  * @alpha
  */
-export type SharedObjectRegistry = () => Promise<Registry<SharedObjectKind<IFluidLoadable>>>;
+export type SharedObjectRegistry = () => Promise<
+	Registry<SharedObjectKindAlpha<IFluidLoadable>>
+>;
 
 /**
- * Creates a {@link SharedObjectRegistry} from an iterable of {@link SharedObjectKind}s or async getters for them.
+ * Creates a {@link SharedObjectRegistry} from an iterable of {@link SharedObjectKindAlpha}s or async getters for them.
  * @alpha
  */
 export function sharedObjectRegistryFromIterable(
 	entries: Iterable<
-		| SharedObjectKind<IFluidLoadable>
-		| { type: string; kind: () => Promise<SharedObjectKind<IFluidLoadable>> }
+		| SharedObjectKindAlpha<IFluidLoadable>
+		| { type: string; kind: () => Promise<SharedObjectKindAlpha<IFluidLoadable>> }
 	>,
 ): SharedObjectRegistry {
 	return async () => {
-		const map = new Map<string, SharedObjectKind<IFluidLoadable>>();
+		const map = new Map<string, SharedObjectKindAlpha<IFluidLoadable>>();
 		for (const entry of entries) {
 			if ("kind" in entry) {
 				map.set(entry.type, await entry.kind());

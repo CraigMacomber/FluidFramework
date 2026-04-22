@@ -1464,7 +1464,7 @@ export const RecordNodeSchema: {
 // @alpha @input
 export type Registry<T> = (type: string) => T;
 
-// @public @sealed @input
+// @alpha @sealed @input
 export interface RegistryKey<TOut, TIn = unknown> {
     adapt(value: TIn): TOut;
     readonly type: string;
@@ -1731,25 +1731,32 @@ export interface SharedObjectCreator<TConstraint = IFluidLoadable> {
     create<T extends TConstraint>(kind: SharedObjectKey<T>): Promise<T>;
 }
 
-// @public @input
-export type SharedObjectKey<T> = RegistryKey<SharedObjectKind<T>, SharedObjectKind>;
+// @alpha @input
+export type SharedObjectKey<T> = RegistryKey<SharedObjectKindAlpha<T>, SharedObjectKindAlpha>;
 
 // @public @sealed
-export interface SharedObjectKind<out TSharedObject = unknown> extends SharedObjectKey<TSharedObject>, ErasedType<readonly ["SharedObjectKind", TSharedObject]> {
+export interface SharedObjectKind<out TSharedObject = unknown> extends ErasedType<readonly ["SharedObjectKind", TSharedObject]> {
     is(value: IFluidLoadable): value is IFluidLoadable & TSharedObject;
 }
 
+// @alpha @sealed
+export interface SharedObjectKindAlpha<out TSharedObject = unknown> extends SharedObjectKind<TSharedObject>, SharedObjectKey<TSharedObject> {
+}
+
 // @alpha @input
-export type SharedObjectRegistry = () => Promise<Registry<SharedObjectKind<IFluidLoadable>>>;
+export type SharedObjectRegistry = () => Promise<Registry<SharedObjectKindAlpha<IFluidLoadable>>>;
 
 // @alpha
-export function sharedObjectRegistryFromIterable(entries: Iterable<SharedObjectKind<IFluidLoadable> | {
+export function sharedObjectRegistryFromIterable(entries: Iterable<SharedObjectKindAlpha<IFluidLoadable> | {
     type: string;
-    kind: () => Promise<SharedObjectKind<IFluidLoadable>>;
+    kind: () => Promise<SharedObjectKindAlpha<IFluidLoadable>>;
 }>): SharedObjectRegistry;
 
 // @public
 export const SharedTree: SharedObjectKind<ITree>;
+
+// @alpha
+export const SharedTreeAlpha: SharedObjectKindAlpha<ITree>;
 
 // @alpha @input
 export interface SharedTreeFormatOptions {
@@ -2322,7 +2329,7 @@ export interface TreeDataStoreOptions<TSchema extends ImplicitFieldSchema> exten
     readonly initializer?: (creator: SharedObjectCreator) => InsertableTreeFieldFromImplicitField<TSchema>;
     // (undocumented)
     readonly key?: SharedObjectKey<ITree>;
-    readonly registry?: Iterable<SharedObjectKind<IFluidLoadable>> | SharedObjectRegistry;
+    readonly registry?: Iterable<SharedObjectKindAlpha<IFluidLoadable>> | SharedObjectRegistry;
 }
 
 // @beta @input
