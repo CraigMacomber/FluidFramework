@@ -1177,6 +1177,7 @@ export class GarbageCollector implements IGarbageCollector {
 	public close(): void {
 		this.sessionExpiryTimer?.clear();
 		this.sessionExpiryTimer = undefined;
+		// Clear all unreferenced node timers to prevent process hanging
 		for (const tracker of this.unreferencedNodesState.values()) {
 			tracker.cancelTimers();
 		}

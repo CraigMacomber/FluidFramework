@@ -454,8 +454,9 @@ export interface IGarbageCollector {
 	isNodeDeleted(nodePath: string): boolean;
 	setConnectionState(canSendOps: boolean, clientId?: string): void;
 	/**
-	 * Cancels all GC timers without destroying tracked state. Called when the container closes
-	 * so timers do not keep the Node.js event loop alive after the container is done.
+	 * Cancels all GC timers without destroying tracked state.
+	 * @remarks
+	 * Called when the container closes so timers do not keep the event loop alive or leak memory.
 	 */
 	close(): void;
 	dispose(): void;
