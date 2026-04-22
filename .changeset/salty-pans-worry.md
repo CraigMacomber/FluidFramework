@@ -12,7 +12,7 @@ without clearing tracked state.
 
 This prevents the timers from causing memory leaks after a container is closed but not disposed.
 In Node.js environments this prevents the timers from keeping the event loop alive until `dispose()`.
-This can avoid reduces the need for mocha's --exit in tests which create containers which are closed but not disposed.
+This can reduce the need for mocha's --exit in tests which create containers which are closed but not disposed.
 
 Disposing of closed containers is still recommended, but it is now less critical for avoiding timer-related hangs after close.
 Disposal still helps clean up resources and can reduce the size of memory leaks if references to the container are leaked.
