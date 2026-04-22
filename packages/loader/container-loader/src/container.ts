@@ -1074,6 +1074,8 @@ export class Container
 				this.mc.logger.sendErrorEvent({ eventName: "ContainerCloseException" }, newError);
 			}
 
+			this._runtime?.notifyClosed?.();
+
 			this.emit("closed", error);
 
 			if (this.visibilityEventHandler !== undefined) {
