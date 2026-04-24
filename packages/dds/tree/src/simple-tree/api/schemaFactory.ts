@@ -261,7 +261,7 @@ export const SchemaFactory_base = classWithStatics(schemaStaticsPublic);
  *
  * 1. Declaration: `class X extends schemaFactory.object("x", {}) {}`
  *
- * 2. Allows adding "local" (non-persisted) members: members (including methods) can be added to the class.
+ * 2. Allows adding "local" (non-persisted) members: additional members (including methods) can be added to the class.
  *
  * 3. Prototype: The user-defined class.
  *
