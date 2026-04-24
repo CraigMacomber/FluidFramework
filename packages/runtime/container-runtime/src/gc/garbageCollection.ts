@@ -1174,17 +1174,14 @@ export class GarbageCollector implements IGarbageCollector {
 		return this.deletedNodes.has(nodePath);
 	}
 
-	public close(): void {
+	public dispose(): void {
 		this.sessionExpiryTimer?.clear();
 		this.sessionExpiryTimer = undefined;
+
 		// Clear all unreferenced node timers to prevent process hanging
 		for (const tracker of this.unreferencedNodesState.values()) {
-			tracker.cancelTimers();
+			tracker.stopTracking();
 		}
-	}
-
-	public dispose(): void {
-		this.close();
 		this.unreferencedNodesState.clear();
 	}
 

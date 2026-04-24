@@ -454,11 +454,11 @@ export interface IGarbageCollector {
 	isNodeDeleted(nodePath: string): boolean;
 	setConnectionState(canSendOps: boolean, clientId?: string): void;
 	/**
-	 * Cancels all GC timers without destroying tracked state.
+	 * Cancels all GC timers and clears tracked state so timers do not keep the event loop alive
+	 * or leak memory.
 	 * @remarks
-	 * Called when the container closes so timers do not keep the event loop alive or leak memory.
+	 * Idempotent: Safe to call multiple times.
 	 */
-	close(): void;
 	dispose(): void;
 }
 
