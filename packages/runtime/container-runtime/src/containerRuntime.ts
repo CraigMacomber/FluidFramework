@@ -2395,7 +2395,7 @@ export class ContainerRuntime
 		}
 	}
 
-	public notifyClosed(): void {
+	public close(): void {
 		this.garbageCollector.dispose();
 	}
 

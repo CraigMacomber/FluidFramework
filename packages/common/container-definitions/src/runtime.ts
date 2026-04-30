@@ -225,16 +225,19 @@ export interface IRuntime extends IDisposable {
 	getEntryPoint(): Promise<FluidObject>;
 
 	/**
-	 * Notifies the runtime that the container has closed. The runtime should cancel any timers
-	 * or other resources that are no longer needed once the container is closed, while preserving
-	 * state that may still be inspected by the caller before disposal.
+	 * Closes the runtime, releasing timers and other transient resources which are only useful while changes to the content or service are still possible.
+	 * The entryPoint is preserved, allowing content to still be read/inspected.
 	 *
 	 * @remarks
-	 * This is optional for backwards compatibility with older runtime implementations. Runtimes
-	 * that do not implement this will have resources cleaned up only when {@link @fluidframework/core-interfaces#IDisposable.dispose}
-	 * is called.
+	 * This enters an intermediate lifecycle stage between connected operation and full disposal.
+	 * The container calls this when it closes, before eventually calling
+	 * {@link @fluidframework/core-interfaces#IDisposable.dispose}.
+	 *
+	 * This is optional for backwards compatibility with older runtime implementations.
+	 * Any resources this cleans up should also be cleaned up by `dispose`.
+	 * in the case when `close` is not called.
 	 */
-	notifyClosed?(): void;
+	close?(): void;
 }
 
 /**
