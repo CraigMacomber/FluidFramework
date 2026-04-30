@@ -230,12 +230,12 @@ export interface IRuntime extends IDisposable {
 	 *
 	 * @remarks
 	 * This enters an intermediate lifecycle stage between connected operation and full disposal.
-	 * The container calls this when it closes, before eventually calling
+	 * The container may call this when it closes, before eventually calling
 	 * {@link @fluidframework/core-interfaces#IDisposable.dispose}.
+	 * Any resources this cleans up should also be cleaned up by `dispose`
+	 * in the case when `close` is not called.
 	 *
 	 * This is optional for backwards compatibility with older runtime implementations.
-	 * Any resources this cleans up should also be cleaned up by `dispose`.
-	 * in the case when `close` is not called.
 	 */
 	close?(): void;
 }
