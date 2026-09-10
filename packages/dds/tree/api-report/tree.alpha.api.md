@@ -335,7 +335,7 @@ export interface DirtyTreeMap {
 export type DirtyTreeStatus = "new" | "changed" | "moved";
 
 // @alpha
-export function encodeSchemaCompatibilitySnapshot(simpleSchema: SimpleTreeSchema): JsonCompatibleReadOnly;
+export function encodeSchemaCompatibilitySnapshot(simpleSchema: SimpleTreeSchema, oldestSupportedClientVersion?: OldestSupportedClientVersion): JsonCompatibleReadOnly;
 
 // @beta
 export function enumFromStrings<TScope extends string, const Members extends readonly string[]>(factory: SchemaFactory<TScope>, members: Members): (<TValue extends Members[number]>(value: TValue) => TValue extends unknown ? NodeFromSchema<ReturnType<typeof singletonSchema<TScope, TValue>>> : never) & { [Index in Extract<keyof Members, `${number}`> extends `${infer N extends number}` ? N : never as Members[Index]]: TreeNodeSchemaClass<ScopedSchemaName<TScope, Members[Index]>, NodeKind.Object, TreeNode & {
@@ -365,7 +365,7 @@ export function eraseSchemaDetailsSubclassable<TNode, ExtraSchemaProperties = un
 export function evaluateLazySchema<T extends TreeNodeSchema>(value: LazyItem<T>): T;
 
 // @alpha
-export function exportCompatibilitySchemaSnapshot(config: Pick<TreeViewConfiguration, "schema">): JsonCompatibleReadOnly;
+export function exportCompatibilitySchemaSnapshot(config: Pick<TreeViewConfiguration, "schema">, oldestSupportedClientVersion?: OldestSupportedClientVersion): JsonCompatibleReadOnly;
 
 // @beta
 export namespace ExtensibleUnionNode {
@@ -493,6 +493,7 @@ export const FluidClientVersion: {
     readonly v2_74: "2.74.0";
     readonly v2_80: "2.80.0";
     readonly v2_117: "2.117.0";
+    readonly v3_1: "3.1.0";
 };
 
 // @beta
@@ -1554,6 +1555,7 @@ export interface SnapshotSchemaCompatibilityOptions {
     readonly fileSystem: SnapshotFileSystem;
     readonly minVersionForCollaboration: string;
     readonly mode: "assert" | "update";
+    readonly oldestSupportedClientVersion?: OldestSupportedClientVersion;
     readonly rejectSchemaChangesWithNoVersionChange?: true;
     readonly rejectVersionsWithNoSchemaChange?: true;
     readonly schema: TreeViewConfiguration;
