@@ -721,6 +721,7 @@ export interface SnapshotSchemaCompatibilityOptions {
     readonly fileSystem: SnapshotFileSystem;
     readonly minVersionForCollaboration: string;
     readonly mode: "assert" | "update";
+    readonly oldestSupportedClientVersion?: OldestSupportedClientVersion;
     readonly rejectSchemaChangesWithNoVersionChange?: true;
     readonly rejectVersionsWithNoSchemaChange?: true;
     readonly schema: TreeViewConfiguration;

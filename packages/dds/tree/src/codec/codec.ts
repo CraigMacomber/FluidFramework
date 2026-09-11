@@ -559,6 +559,14 @@ export const FluidClientVersion = {
 	 * client that maps 2.117.0 to an older format would silently strip metadata when encoding.
 	 */
 	v2_117: "2.117.0",
+
+	/**
+	 * Fluid Framework Client 3.1 and newer.
+	 * @remarks
+	 * New formats introduced in 3.1:
+	 * - SimpleSchemaFormatVersion.v2 - supports staged optional fields.
+	 */
+	v3_1: "3.1.0",
 } as const satisfies Record<string, OldestSupportedClientVersion>;
 
 /**
