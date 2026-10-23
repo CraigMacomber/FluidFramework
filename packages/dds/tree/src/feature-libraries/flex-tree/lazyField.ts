@@ -221,8 +221,15 @@ export abstract class LazyField extends LazyEntity<FieldAnchor> implements FlexT
 		);
 	}
 
-	public getFieldPath(): NormalizedFieldUpPath {
-		return { parent: this.parent?.anchorNode, field: this.key };
+	public getFieldPath(): { parent: AnchorNode | undefined; field: FieldKey } {
+		assert(!this.isFreed(), "Cannot get the path of a freed field");
+		this.context.checkout.forest.breaker.use();
+		const parent =
+			this.anchor.parent === undefined
+				? undefined
+				: (this.context.checkout.forest.anchors.locate(this.anchor.parent) ??
+					fail("Field parent anchor must exist"));
+		return { parent, field: this.key };
 	}
 
 	/**
@@ -230,15 +237,15 @@ export abstract class LazyField extends LazyEntity<FieldAnchor> implements FlexT
 	 * This path is not valid to hold onto across edits: this must be recalled for each edit.
 	 */
 	public getFieldPathForEditing(): NormalizedFieldUpPath {
-		if (
-			!this.isFreed() &&
-			// Only allow editing if we are the root document field...
-			((this.parent === undefined && this.anchor.fieldKey === rootFieldKey) ||
-				// ...or are under a node in the document
-				(this.parent !== undefined &&
-					treeStatusFromAnchorCache(this.parent.anchorNode) === TreeStatus.InDocument))
-		) {
-			return this.getFieldPath();
+		if (!this.isFreed()) {
+			const path = this.getFieldPath();
+			if (
+				path.parent === undefined
+					? path.field === rootFieldKey
+					: treeStatusFromAnchorCache(path.parent) === TreeStatus.InDocument
+			) {
+				return path;
+			}
 		}
 
 		throw new UsageError("Editing only allowed on fields with TreeStatus.InDocument status");
