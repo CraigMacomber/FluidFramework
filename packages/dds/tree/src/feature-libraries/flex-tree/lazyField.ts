@@ -9,6 +9,7 @@ import { UsageError } from "@fluidframework/telemetry-utils/internal";
 import {
 	type AnchorNode,
 	CursorLocationType,
+	LeafNodeStoredSchema,
 	type ExclusiveMapTree,
 	type FieldAnchor,
 	type FieldKey,
@@ -208,6 +209,14 @@ export abstract class LazyField extends LazyEntity<FieldAnchor> implements FlexT
 	}
 
 	public atIndex(index: number): FlexTreeUnknownUnboxed {
+		this.assertCursorAccess();
+		const cached = cachedChild(this.context, this.anchor, index);
+		if (
+			cached !== undefined &&
+			!(this.context.schema.nodeSchema.get(cached.type) instanceof LeafNodeStoredSchema)
+		) {
+			return cached;
+		}
 		return inCursorNode(this.cursor, index, (cursor) =>
 			unboxedFlexNode(this.context, cursor, this.anchor),
 		);
@@ -376,6 +385,17 @@ export function unboxedFlexNode(
 		return value;
 	}
 
+	return (
+		cachedChild(context, fieldAnchor, cursor.fieldIndex) ??
+		getOrCreateHydratedFlexTreeNode(context, cursor)
+	);
+}
+
+function cachedChild(
+	context: Context,
+	fieldAnchor: FieldAnchor,
+	index: number,
+): HydratedFlexTreeNode | undefined {
 	// Try accessing cached child node via anchors.
 	// This avoids O(depth) related costs from getOrCreateHydratedFlexTreeNode in the cached case.
 	const anchor = fieldAnchor.parent;
@@ -384,12 +404,12 @@ export function unboxedFlexNode(
 		child = context.checkout.forest.anchors.find({
 			parent: undefined,
 			parentField: fieldAnchor.fieldKey,
-			parentIndex: cursor.fieldIndex,
+			parentIndex: index,
 		});
 	} else {
 		const anchorNode = context.checkout.forest.anchors.locate(anchor);
 		assert(anchorNode !== undefined, 0xa4c /* missing anchor */);
-		child = anchorNode.childIfAnchored(fieldAnchor.fieldKey, cursor.fieldIndex);
+		child = anchorNode.childIfAnchored(fieldAnchor.fieldKey, index);
 	}
 
 	if (child !== undefined) {
@@ -399,5 +419,5 @@ export function unboxedFlexNode(
 		}
 	}
 
-	return getOrCreateHydratedFlexTreeNode(context, cursor);
+	return undefined;
 }
