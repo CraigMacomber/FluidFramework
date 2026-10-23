@@ -18,11 +18,21 @@ import {
 } from "../../../core/index.js";
 import type { Context } from "../../../feature-libraries/flex-tree/context.js";
 import { LazyTreeNode } from "../../../feature-libraries/flex-tree/lazyNode.js";
+import { withObservation } from "../../../feature-libraries/flex-tree/observer.js";
 import type { FlexTreeField, FlexTreeNode } from "../../../feature-libraries/index.js";
 import { JsonAsTree } from "../../../jsonDomainSchema.js";
-import { SchemaFactory } from "../../../simple-tree/index.js";
+import {
+	SchemaFactory,
+	TreeViewConfiguration,
+	getInnerNode,
+} from "../../../simple-tree/index.js";
+import {
+	createIndependentTreeAlpha,
+	ForestTypeOptimized,
+	ForestTypeReference,
+} from "../../../shared-tree/index.js";
 import { stringSchema } from "../../../simple-tree/leafNodeSchema.js";
-import { brand } from "../../../util/index.js";
+import { brand, disposeSymbol } from "../../../util/index.js";
 
 import { readonlyTreeWithContent } from "./utils.js";
 
@@ -45,6 +55,64 @@ function createAnchors(
 }
 
 describe("LazyNode", () => {
+	for (const forest of [ForestTypeOptimized, ForestTypeReference]) {
+		it(`cached fields preserve observation, emptiness and lifetime (${forest})`, () => {
+			const sf = new SchemaFactory("cached-fields");
+			class Item extends sf.object("Item", { value: sf.optional(sf.number) }) {}
+			const view = createIndependentTreeAlpha({ forest }).viewWith(
+				new TreeViewConfiguration({ schema: Item }),
+			);
+			view.initialize({});
+			const node = getInnerNode(view.root);
+			assert(node instanceof LazyTreeNode);
+			const key: FieldKey = brand("value");
+			const field = node.getBoxed(key);
+			for (const entity of node.context.withCursors) entity.prepareForEdit();
+			let observations = 0;
+			withObservation(
+				{
+					observeNodeDeep: () => {},
+					observeNodeFields: () => {},
+					observeParentOf: () => {},
+					observeNodeField: (observed, observedKey) => {
+						assert.equal(observed, node);
+						assert.equal(observedKey, key);
+						observations++;
+					},
+				},
+				() => assert.equal(node.getBoxed(key), field),
+			);
+			assert.equal(observations, 1);
+			assert.equal(node.context.withCursors.size, 0);
+			assert.equal(node.tryGetField(key), undefined);
+			view.root.value = 1;
+			assert.equal(node.tryGetField(key), field);
+			view.root.value = undefined;
+			assert.equal(node.getBoxed(key), field);
+			assert.equal(node.tryGetField(key), undefined);
+			const checkout = node.context.checkout;
+			view.dispose();
+			assert.throws(() => node.getBoxed(key));
+			checkout.dispose();
+		});
+	}
+
+	it("cached fields reject a broken forest", () => {
+		const { context, cursor } = readonlyTreeWithContent({
+			schema: JsonAsTree.JsonObject,
+			initialTree: { x: 1 },
+		});
+		const node = context.root.boxedAt(0);
+		assert(node !== undefined);
+		node.getBoxed(brand("x"));
+		const breaker = context.checkout.forest.breaker;
+		assert.throws(() => breaker.break(new Error("test break")), /test break/);
+		assert.throws(() => node.getBoxed(brand("x")), /invalid state/);
+		breaker.clearError();
+		cursor.free();
+		context[disposeSymbol]();
+	});
+
 	describe("LazyNode", () => {
 		it("parent", () => {
 			const schemaFactory = new SchemaFactory("test");

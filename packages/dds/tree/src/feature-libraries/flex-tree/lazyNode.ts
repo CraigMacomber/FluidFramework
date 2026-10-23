@@ -32,7 +32,7 @@ import {
 	flexTreeSlot,
 } from "./flexTreeTypes.js";
 import { LazyEntity } from "./lazyEntity.js";
-import { makeField } from "./lazyField.js";
+import { getCachedField, makeField } from "./lazyField.js";
 import { currentObserver } from "./observer.js";
 
 /**
@@ -147,6 +147,13 @@ export class LazyTreeNode extends LazyEntity<Anchor> implements HydratedFlexTree
 
 	public getBoxed(key: FieldKey): FlexTreeField {
 		currentObserver?.observeNodeField(this, key);
+
+		assert(!this.isFreed(), "Cannot access a field of a freed node");
+		this.context.checkout.forest.breaker.use();
+		const cached = getCachedField(this, key);
+		if (cached !== undefined) {
+			return cached;
+		}
 
 		const fieldSchema = this.storedSchema.getFieldSchema(key);
 		return inCursorField(this.cursor, key, (cursor) => {

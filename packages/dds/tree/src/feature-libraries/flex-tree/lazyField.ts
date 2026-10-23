@@ -71,6 +71,14 @@ import { indexForAt, treeStatusFromAnchorCache } from "./utilities.js";
  */
 const fieldCache: WeakMap<LazyTreeNode, Map<FieldKey, FlexTreeField>> = new WeakMap();
 
+/**
+ * Looks up a field without navigating a cursor.
+ * The caller must validate the owning node's lifetime before using the result.
+ */
+export function getCachedField(node: LazyTreeNode, key: FieldKey): FlexTreeField | undefined {
+	return fieldCache.get(node)?.get(key);
+}
+
 export function makeField(
 	context: Context,
 	schema: FieldKindIdentifier,
