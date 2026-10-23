@@ -148,8 +148,7 @@ export class LazyTreeNode extends LazyEntity<Anchor> implements HydratedFlexTree
 	public getBoxed(key: FieldKey): FlexTreeField {
 		currentObserver?.observeNodeField(this, key);
 
-		assert(!this.isFreed(), "Cannot access a field of a freed node");
-		this.context.checkout.forest.breaker.use();
+		this.assertCursorAccess();
 		const cached = getCachedField(this, key);
 		if (cached !== undefined) {
 			return cached;
@@ -174,11 +173,21 @@ export class LazyTreeNode extends LazyEntity<Anchor> implements HydratedFlexTree
 	public get parentField(): { readonly parent: FlexTreeField; readonly index: number } {
 		currentObserver?.observeParentOf(this);
 
-		const cursor = this.cursor;
+		this.assertCursorAccess();
 		const index = this.anchorNode.parentIndex;
-		assert(cursor.fieldIndex === index, 0x786 /* mismatched indexes */);
 		const key = this.anchorNode.parentField;
+		const parent = this.anchorNode.parent?.slots.get(flexTreeSlot);
+		if (parent !== undefined) {
+			assert(parent.context === this.context, "Parent context must match child context");
+			assert(parent instanceof LazyTreeNode, "Expected a lazy parent node");
+			const cached = getCachedField(parent, key);
+			if (cached !== undefined) {
+				return { parent: cached, index };
+			}
+		}
 
+		const cursor = this.cursor;
+		assert(cursor.fieldIndex === index, 0x786 /* mismatched indexes */);
 		cursor.exitNode();
 		assert(key === cursor.getFieldKey(), 0x787 /* mismatched keys */);
 		let fieldSchema: FieldKindIdentifier;

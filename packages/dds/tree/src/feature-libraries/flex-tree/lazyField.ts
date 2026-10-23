@@ -176,6 +176,14 @@ export abstract class LazyField extends LazyEntity<FieldAnchor> implements FlexT
 			return undefined;
 		}
 
+		this.assertCursorAccess();
+		const parent = this.context.checkout.forest.anchors.locate(this.anchor.parent);
+		const cached = parent?.slots.get(flexTreeSlot);
+		if (cached !== undefined) {
+			assert(cached.context === this.context, "Parent context must match field context");
+			return cached;
+		}
+
 		const cursor = this.cursor;
 		cursor.exitField();
 		const output = getOrCreateHydratedFlexTreeNode(this.context, cursor);
@@ -230,8 +238,7 @@ export abstract class LazyField extends LazyEntity<FieldAnchor> implements FlexT
 	}
 
 	public getFieldPath(): { parent: AnchorNode | undefined; field: FieldKey } {
-		assert(!this.isFreed(), "Cannot get the path of a freed field");
-		this.context.checkout.forest.breaker.use();
+		this.assertCursorAccess();
 		const parent =
 			this.anchor.parent === undefined
 				? undefined

@@ -30,6 +30,7 @@ import {
 	createIndependentTreeAlpha,
 	ForestTypeOptimized,
 	ForestTypeReference,
+	Tree,
 } from "../../../shared-tree/index.js";
 import { stringSchema } from "../../../simple-tree/leafNodeSchema.js";
 import { brand, disposeSymbol } from "../../../util/index.js";
@@ -56,6 +57,54 @@ function createAnchors(
 
 describe("LazyNode", () => {
 	for (const forest of [ForestTypeOptimized, ForestTypeReference]) {
+		it(`cached parents follow moves and removal without cursor recovery (${forest})`, () => {
+			const sf = new SchemaFactory("cached-parents");
+			class Item extends sf.object("Item", { value: sf.number }) {}
+			class Items extends sf.array("Items", Item) {}
+			class Root extends sf.object("Root", { left: Items, right: Items }) {}
+			const view = createIndependentTreeAlpha({ forest }).viewWith(
+				new TreeViewConfiguration({ schema: Root }),
+			);
+			view.initialize({ left: [{ value: 1 }, { value: 2 }], right: [] });
+			const root = view.root;
+			const item = root.left[1];
+			const node = getInnerNode(item);
+			assert(node instanceof LazyTreeNode);
+			const originalField = node.parentField.parent;
+			root.right.moveToStart(1, root.left);
+			const rightNode = getInnerNode(root.right);
+			const destination = rightNode.getBoxed(EmptyKey);
+			for (const entity of node.context.withCursors) entity.prepareForEdit();
+			let observations = 0;
+			withObservation(
+				{
+					observeNodeDeep: () => assert.fail("unexpected deep observation"),
+					observeNodeFields: () => assert.fail("unexpected fields observation"),
+					observeNodeField: () => assert.fail("unexpected field observation"),
+					observeParentOf: (observed) => {
+						assert.equal(observed, node);
+						observations++;
+					},
+				},
+				() => {
+					assert.deepEqual(node.parentField, { parent: destination, index: 0 });
+					assert.equal(destination.parent, rightNode);
+				},
+			);
+			assert.equal(observations, 1);
+			assert.equal(node.context.withCursors.size, 0);
+			assert.notEqual(destination, originalField);
+			assert.equal(Tree.parent(item), root.right);
+			assert.equal(Tree.key(item), 0);
+			root.right.removeAt(0);
+			assert.equal(Tree.parent(item), undefined);
+			const checkout = node.context.checkout;
+			view.dispose();
+			assert.throws(() => node.parentField);
+			assert.throws(() => destination.parent);
+			checkout.dispose();
+		});
+
 		it(`cached fields preserve observation, emptiness and lifetime (${forest})`, () => {
 			const sf = new SchemaFactory("cached-fields");
 			class Item extends sf.object("Item", { value: sf.optional(sf.number) }) {}
@@ -97,16 +146,19 @@ describe("LazyNode", () => {
 		});
 	}
 
-	it("cached fields reject a broken forest", () => {
+	it("cached fields preserve current reads but reject recovery in a broken forest", () => {
 		const { context, cursor } = readonlyTreeWithContent({
 			schema: JsonAsTree.JsonObject,
 			initialTree: { x: 1 },
 		});
 		const node = context.root.boxedAt(0);
 		assert(node !== undefined);
-		node.getBoxed(brand("x"));
+		const field = node.getBoxed(brand("x"));
 		const breaker = context.checkout.forest.breaker;
 		assert.throws(() => breaker.break(new Error("test break")), /test break/);
+		assert.equal(node.getBoxed(brand("x")), field);
+		assert(node instanceof LazyTreeNode);
+		node.prepareForEdit();
 		assert.throws(() => node.getBoxed(brand("x")), /invalid state/);
 		breaker.clearError();
 		cursor.free();
