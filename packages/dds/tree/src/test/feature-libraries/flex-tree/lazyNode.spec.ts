@@ -16,7 +16,7 @@ import {
 	type MapTree,
 	rootFieldKey,
 } from "../../../core/index.js";
-import type { Context } from "../../../feature-libraries/flex-tree/context.js";
+import { Context } from "../../../feature-libraries/flex-tree/context.js";
 import { LazyTreeNode } from "../../../feature-libraries/flex-tree/lazyNode.js";
 import { withObservation } from "../../../feature-libraries/flex-tree/observer.js";
 import type { FlexTreeField, FlexTreeNode } from "../../../feature-libraries/index.js";
@@ -56,8 +56,11 @@ function createAnchors(
 }
 
 describe("LazyNode", () => {
-	for (const forest of [ForestTypeOptimized, ForestTypeReference]) {
-		it(`cached parents follow moves and removal without cursor recovery (${forest})`, () => {
+	for (const [name, forest] of [
+		["ChunkedForest", ForestTypeOptimized],
+		["ObjectForest", ForestTypeReference],
+	] as const) {
+		it(`cached parents follow moves and removal without cursor recovery (${name})`, () => {
 			const sf = new SchemaFactory("cached-parents");
 			class Item extends sf.object("Item", { value: sf.number }) {}
 			class Items extends sf.array("Items", Item) {}
@@ -105,7 +108,7 @@ describe("LazyNode", () => {
 			checkout.dispose();
 		});
 
-		it(`cached fields preserve observation, emptiness and lifetime (${forest})`, () => {
+		it(`cached fields preserve observation, emptiness and lifetime (${name})`, () => {
 			const sf = new SchemaFactory("cached-fields");
 			class Item extends sf.object("Item", { value: sf.optional(sf.number) }) {}
 			const view = createIndependentTreeAlpha({ forest }).viewWith(
@@ -163,6 +166,33 @@ describe("LazyNode", () => {
 		breaker.clearError();
 		cursor.free();
 		context[disposeSymbol]();
+	});
+
+	it("does not reuse fields from a disposed context on the same anchors", () => {
+		const { context, cursor } = readonlyTreeWithContent({
+			schema: JsonAsTree.JsonObject,
+			initialTree: { x: 1 },
+		});
+		const node = context.root.boxedAt(0);
+		assert(node instanceof LazyTreeNode);
+		const key: FieldKey = brand("x");
+		const field = node.getBoxed(key);
+		const forest = context.checkout.forest;
+		const retainedAnchor = forest.anchors.track(node.anchorNode);
+		cursor.free();
+		context[disposeSymbol]();
+		const replacement = new Context(
+			context.schemaPolicy,
+			context.checkout,
+			context.nodeKeyManager,
+		);
+		const replacementNode = replacement.root.boxedAt(0);
+		assert(replacementNode instanceof LazyTreeNode);
+		assert.equal(replacementNode.anchorNode, forest.anchors.locate(retainedAnchor));
+		assert.notEqual(replacementNode.getBoxed(key), field);
+		assert.throws(() => node.getBoxed(key));
+		replacement[disposeSymbol]();
+		forest.anchors.forget(retainedAnchor);
 	});
 
 	describe("LazyNode", () => {

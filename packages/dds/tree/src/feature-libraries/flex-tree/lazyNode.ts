@@ -141,7 +141,7 @@ export class LazyTreeNode extends LazyEntity<Anchor> implements HydratedFlexTree
 			if (cursor.getFieldLength() === 0) {
 				return undefined;
 			}
-			return makeField(this.context, schema.kind, cursor);
+			return getCachedField(this, fieldKey) ?? makeField(this.context, schema.kind, cursor);
 		});
 	}
 

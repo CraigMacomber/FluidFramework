@@ -242,6 +242,7 @@ describe("LazyField", () => {
 		const v = forest.anchors.acquireVisitor();
 		v.destroy(rootFieldKey, 1);
 		assert(field.isFreed());
+		assert.throws(() => holder.getBoxed(brand("f")));
 
 		// Should not double free.
 		context[disposeSymbol]();
