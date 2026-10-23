@@ -23,7 +23,10 @@ Re-read relevant code before making changes; locations and assumptions may chang
 ## Goal and constraints
 
 Reduce unnecessary cursor navigation, recovery, path allocation, and anchor bookkeeping in FlexTree.
-Measure the effects on shallow and deep trees, especially repeated formatting edits.
+Optimize general FlexTree use across shallow and deep trees, including ordinary object, map, and array access and editing.
+Treat `formatRange` as one useful stress workload because it currently exercises FlexTree heavily, not as the optimization target or the acceptance criterion.
+The user has separate plans to specialize formatting operations so they avoid much of this FlexTree work.
+An improvement should remain useful even if formatting stops exercising the optimized path.
 Finish with the improvements supported by evidence, not a predetermined number of optimizations.
 You may revise priorities, investigate new ideas, or reject candidates; record why.
 
@@ -32,6 +35,11 @@ ChunkedForest can hold very large numbers of very small chunks and fields.
 Do not add per-chunk or per-field metadata, subscriptions, or ownership references merely to accelerate a large-array case without measuring and justifying their costs.
 Prefer existing anchors, caches, and reusable cursor storage.
 Avoid retaining extra wrappers or ancestors as an incidental consequence of an optimization.
+
+Formatting-specific algorithms, batching shortcuts, and bypasses of FlexTree are out of scope.
+FlexTree sequence-length caching is also out of scope: the user already has a separate PR for it.
+Do not duplicate that work, make this exploration depend on it without an explicit reason, or attribute its benefits to these changes.
+If it lands during this work, record the baseline change and compare both variants with the same length-cache implementation.
 
 Do not broaden this work into a general forest representation rewrite.
 The known sibling scans may remain even after these changes.
@@ -46,7 +54,7 @@ Extra owning chunk references could prevent useful in-place mutations.
 2. Verify branch `flexOpt`, HEAD, worktree state, tooling, and dependencies without overwriting unrelated changes.
 3. Record the actual experiment baseline commit and environment.
 4. Inspect the benchmark and candidate code below.
-5. Establish new shallow/deep baselines and targeted operation counts before production edits.
+5. Establish representative non-text shallow/deep baselines, the formatting stress case, and targeted operation counts before production edits.
 6. Commit the benchmark scaffolding, reproducible commands, baseline data, and a plan update.
 7. Explore the candidates individually, starting with anchor-only editing paths and early field-cache lookup.
 
@@ -86,7 +94,7 @@ Use the existing anchor-based status machinery where appropriate.
 Do not accidentally change editing eligibility for root, detached, removed, or deleted fields.
 
 Expected mechanism: fewer cursor recoveries, parent-wrapper lookups, and anchor constructions on editing paths.
-This is the first production candidate because it is directly relevant to formatting and may require little structural change.
+This is the first production candidate because it applies to general editing paths and may require little structural change.
 
 ### B. Field-cache lookup before navigation
 
@@ -172,27 +180,36 @@ Keep generated API reports generated; do not edit them by hand.
 
 ## Benchmark plan
 
-Start from [textDomain.integration.bench.ts](../../src/test/shared-tree/textDomain.integration.bench.ts).
-Reuse the existing formatRange operation, schema, alternating bold values, and untimed document rebuilding unless an experiment explicitly studies one of those factors.
+First inspect existing FlexTree and simple-tree benchmarks and reuse representative non-text workloads where possible.
+Add focused cases for gaps rather than using formatting as a proxy for all FlexTree use.
+Include [textDomain.integration.bench.ts](../../src/test/shared-tree/textDomain.integration.bench.ts) as an additional stress workload.
+Preserve its formatRange operation, schema, alternating bold values, and untimed document rebuilding so results remain comparable; formatting algorithm changes are outside this exploration.
 
 ### Workloads
 
 | Dimension | Initial coverage |
 | --- | --- |
 | Additional wrapper depth | 0 and 10; use 30 as a diagnostic if depth trends warrant it |
-| Document length | 100, 1,000, and 10,000; retain a 10-character small-case control where useful |
+| General node shapes | Objects with required/optional fields, maps, primitive arrays, node arrays, and mixed arrays; include small fields and sparse wrapper materialization |
+| General operations | Property reads/writes, map lookup/update, indexed reads and iteration, insert/remove/move, and parent/key queries |
+| Collection sizes | Tiny and moderate collections as common-use controls; large collections as stress cases |
+| Formatting document length | 100, 1,000, and 10,000; retain a 10-character small-case control where useful |
 | Forest | ChunkedForest and ObjectForest |
-| Materialization | First traversal separately from repeated formatting of already accessed nodes |
+| Materialization | First access/traversal separately from repeated access/editing of already accessed nodes |
 | Access pattern | Repeated reads without edits; read after each edit; multiple related reads between edits |
 | Targeted queries | Parent/key after edit, cached field access, cached non-leaf child access, cursor recovery/copy |
 | Memory | Many tiny chunks/fields, few versus many materialized wrappers, deep trees, repeated edits and disposal |
 
-Hold a reference to the nested text node before timing.
+For the formatting case, hold a reference to the nested text node before timing.
 Do not time application-level traversal of the added wrappers unless that is a separately named workload.
 Use wrappers with stable single-child structure so depth is not accidentally mixed with sibling-width changes.
 Check first-pass and steady-state results separately: anchors and node wrappers are materialized lazily.
 
-Keep a tractable, representative subset as maintained performance tests.
+For each candidate, measure at least one relevant non-text benefit case and the common paths that could pay extra overhead.
+For example, an early child-cache lookup needs primitive and cache-miss controls, not only a repeatedly accessed node array.
+Do not build the full Cartesian product of all dimensions; choose and document a representative matrix before interpreting results.
+
+Keep a tractable, representative subset as maintained performance tests, including non-text coverage for accepted optimizations.
 Keep expensive matrices and diagnostic instrumentation in this research directory.
 Do not put flaky elapsed-time thresholds in ordinary correctness tests.
 
@@ -224,14 +241,16 @@ Record absolute bytes as well as percentages.
 5. Preserve per-process results, not just an aggregate.
    Report equal-weight process means, ranges, sample counts, and the benchmark's margins of error.
    Within-process margins do not describe between-process variability.
-6. Predeclare the target workload and mechanism before interpreting a result.
+6. Predeclare the general operation being optimized, representative non-text workloads, and mechanism before interpreting a result.
    A timing improvement must reproduce in both order blocks and exceed observed run-to-run noise.
    If it does not, collect more evidence or label it inconclusive.
-7. Check shallow/small cases and memory before acceptance.
-   Investigate reproducible regressions rather than averaging them away with larger-case gains.
+7. Check common read/edit paths, shallow/small cases, cache misses, primitives, and memory before acceptance.
+   Reject or revise changes that reproducibly regress common uses even if they substantially improve formatRange.
+   Do not average such regressions away with formatting or large-case gains.
    Set workload-specific memory tolerances from measured baseline noise before accepting metadata changes.
 8. Do not call fewer operations a measured end-to-end speedup.
-   A targeted optimization can be valuable without a formatting gain, but state that scope explicitly.
+   A targeted general-purpose optimization can be valuable without a formatting gain, but state that scope explicitly.
+   Conversely, a formatting-only gain is insufficient evidence of general value; establish benefit on relevant non-text operations before acceptance.
 9. Confirm accepted improvements in production-emulated mode as well as the normal configuration.
 
 ## Historical evidence from the earlier optimization
@@ -337,7 +356,7 @@ Keep the plan's status table current so another agent can resume at any checkpoi
 
 | Work item | Status at handoff | Evidence/next action |
 | --- | --- | --- |
-| New depth and memory baselines | Pending | First execution task |
+| Representative non-text, depth, formatting, and memory baselines | Pending | First execution task |
 | A: anchor-only edit paths | Pending | Code-backed hypothesis |
 | B: early field-cache lookup | Pending | Code-backed hypothesis |
 | C: parent/key access | Pending | Code-backed hypothesis |
