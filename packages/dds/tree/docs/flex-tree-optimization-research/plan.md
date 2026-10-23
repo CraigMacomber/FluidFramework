@@ -10,7 +10,7 @@ References to future PRs will identify their own head and base branches explicit
 - Starting production commit: `8defa178a083468b6160508f35fb67026329ec34`.
 - That commit includes [microsoft/FluidFramework#28519](https://github.com/microsoft/FluidFramework/pull/28519), the earlier array bounds-check and primitive-boxing improvements.
 - At this handoff, the checkout was clean before this document was added.
-- No new anchor/cursor optimizations or deep-tree benchmarks have been implemented.
+- Execution is underway; see [the experiment record](experiments.md) and [raw results](results).
 - The previous agent inspected the code and identified candidates, but did not measure their benefits.
 - The next agent owns experimental execution, validation, reviews, and preparation of clean local PR branches.
 - Do not push branches or create PRs in this phase.
@@ -357,7 +357,7 @@ Keep the plan's status table current so another agent can resume at any checkpoi
 
 | Work item | Status at handoff | Evidence/next action |
 | --- | --- | --- |
-| Representative non-text, depth, formatting, and memory baselines | Pending | First execution task |
+| Representative non-text, depth, formatting, and memory baselines | Established; memory cleanup diagnostic needs refinement | [Baseline record](experiments.md) |
 | A: anchor-only edit paths | Pending | Code-backed hypothesis |
 | B: early field-cache lookup | Pending | Code-backed hypothesis |
 | C: parent/key access | Pending | Code-backed hypothesis |
