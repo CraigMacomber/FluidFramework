@@ -205,6 +205,10 @@ Allocated and freed measurements are retained separately in each process file.
 Small positive and negative post-disposal growth reflects runtime/GC noise; these measurements do not prove absence of every possible leak.
 No per-node, per-field or per-chunk storage, owning references, or subscriptions were added.
 Temporary-anchor counts measure churn in that specific mechanism; total allocation bytes were not measured.
+Instrumentation was narrowed to the accepted mechanisms: forest navigation entries, ancestor-path steps, anchor tracking/release and potential current ancestors.
+Field/child cache hit rates, sibling scans, cursor-clear counts and stack-element copy counts were not separately instrumented.
+The retained implementation does not change sibling scanning or cursor copying; E's cost diagnostic is not a complete copy/allocation profile.
+These are explicit limits of the evidence, not unreported speedup claims.
 
 ## Combined validation and review
 
@@ -232,3 +236,13 @@ Combined review scope is the seven maintained production/test/changeset files, n
 No API report files changed.
 Review disposition: **0 CRITICAL, 0 HIGH, 0 MEDIUM — No high-confidence issues found in the current diff.**
 Earlier test/performance findings were fixed before this review; branch-specific review and CI checks are recorded in the final handoff.
+
+## Landing preparation complete
+
+See [the committed PR-management handoff](pr-handoff.md) for exact local branch heads, stack boundaries, suggested PR bodies and independently executed full test/CI results.
+Both branches passed full package tests.
+The CI wrapper's empty task graph and local-base changeset limitation were detected and checked with actual package commands.
+Automatic ESLint workers exhausted memory; full single-process lint passed.
+No production changes were needed after the combined review.
+The prepared stack is source-identical to the measured accepted implementation.
+No branches were pushed and no PRs were created.

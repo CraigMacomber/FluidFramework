@@ -7,6 +7,10 @@ This directory records experiments and coordinates future landing branches.
 Keep this plan, research-only scripts and data, and the eventual PR handoff document on the exploration branch, not on the landing branches.
 References to future PRs will identify their own head and base branches explicitly.
 
+**Execution complete.**
+Use the committed [PR-management handoff](pr-handoff.md) for the two reviewed, validated local landing branches.
+Nothing was pushed and no PRs were created.
+
 - Starting production commit: `8defa178a083468b6160508f35fb67026329ec34`.
 - That commit includes [microsoft/FluidFramework#28519](https://github.com/microsoft/FluidFramework/pull/28519), the earlier array bounds-check and primitive-boxing improvements.
 - At this handoff, the checkout was clean before this document was added.
@@ -50,7 +54,7 @@ descendant lengths can change through in-place edits, including after detachment
 A WeakMap keyed by a chunk array does not solve that invalidation problem.
 Extra owning chunk references could prevent useful in-place mutations.
 
-## First task for the incoming agent
+## Original execution checklist (completed)
 
 1. Read this plan and the repository's current contribution instructions.
 2. Verify branch `flexOpt`, HEAD, worktree state, tooling, and dependencies without overwriting unrelated changes.
@@ -365,7 +369,7 @@ Keep the plan's status table current so another agent can resume at any checkpoi
 | D: early child-cache lookup | Rejected and reverted | Reproducible primitive-access regressions |
 | E: ancestor cursor recovery | Inconclusive; not landing | Existing copy is cheaper but reusable copy, ownership-position validation and allocation impact are not established |
 | Combined validation and review | Complete | 2,820 tests pass in each mode; balanced timing, memory, ablation and quick review recorded |
-| Clean PR branches and final handoff | In progress | Local-only benchmark prerequisite and optimization branch |
+| Clean PR branches and final handoff | Complete | [Exact heads, bases, full test results, reviews and management instructions](pr-handoff.md) |
 
 ## Review, stabilization, and PR preparation
 
