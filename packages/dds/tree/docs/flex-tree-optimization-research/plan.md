@@ -37,7 +37,8 @@ Prefer existing anchors, caches, and reusable cursor storage.
 Avoid retaining extra wrappers or ancestors as an incidental consequence of an optimization.
 
 Formatting-specific algorithms, batching shortcuts, and bypasses of FlexTree are out of scope.
-FlexTree sequence-length caching is also out of scope: the user already has a separate PR for it.
+FlexTree sequence-length caching is also out of scope: the user's separate PR is [microsoft/FluidFramework#28524](https://github.com/microsoft/FluidFramework/pull/28524).
+Check its current status and overlapping changes when establishing baselines and preparing landing branches; this plan does not assume it has landed.
 Do not duplicate that work, make this exploration depend on it without an explicit reason, or attribute its benefits to these changes.
 If it lands during this work, record the baseline change and compare both variants with the same length-cache implementation.
 
