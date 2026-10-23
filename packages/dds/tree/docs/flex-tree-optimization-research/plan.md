@@ -11,8 +11,9 @@ References to future PRs will identify their own head and base branches explicit
 - That commit includes [microsoft/FluidFramework#28519](https://github.com/microsoft/FluidFramework/pull/28519), the earlier array bounds-check and primitive-boxing improvements.
 - At this handoff, the checkout was clean before this document was added.
 - Execution is underway; see [the experiment record](experiments.md) and [raw results](results).
-- The previous agent inspected the code and identified candidates, but did not measure their benefits.
-- The next agent owns experimental execution, validation, reviews, and preparation of clean local PR branches.
+- A, B and C are implemented and measured; D was reverted after primitive regressions.
+- E remains inconclusive and is not included in the landing set.
+- Execution details, corrected hypotheses and raw result references are in [the experiment record](experiments.md).
 - Do not push branches or create PRs in this phase.
   A separate agent with the necessary permissions will use the final committed handoff to do that.
 
@@ -357,14 +358,14 @@ Keep the plan's status table current so another agent can resume at any checkpoi
 
 | Work item | Status at handoff | Evidence/next action |
 | --- | --- | --- |
-| Representative non-text, depth, formatting, and memory baselines | Established; memory cleanup diagnostic needs refinement | [Baseline record](experiments.md) |
-| A: anchor-only edit paths | Pending | Code-backed hypothesis |
-| B: early field-cache lookup | Pending | Code-backed hypothesis |
-| C: parent/key access | Pending | Code-backed hypothesis |
-| D: early child-cache lookup | Pending | Code-backed hypothesis |
-| E: ancestor cursor recovery | Pending | Higher-risk hypothesis; measure copying costs |
-| Combined validation and review | Pending | Depends on accepted experiments |
-| Clean PR branches and final handoff | Pending | Depends on stabilization |
+| Representative non-text, depth, formatting, and memory baselines | Complete | [Experiment record](experiments.md); final memory uses library utilities |
+| A: anchor-only edit paths | Accepted | No parent materialization or cursor recovery for field paths; isolated ablation retains benefit |
+| B: early field-cache lookup | Accepted, extended | Also reuse non-empty `tryGetField` cache after checking length |
+| C: parent/key access | Accepted, bounded | Cached parent field/wrapper paths; no public API changes |
+| D: early child-cache lookup | Rejected and reverted | Reproducible primitive-access regressions |
+| E: ancestor cursor recovery | Inconclusive; not landing | Existing copy is cheaper but reusable copy, ownership-position validation and allocation impact are not established |
+| Combined validation and review | Complete | 2,820 tests pass in each mode; balanced timing, memory, ablation and quick review recorded |
+| Clean PR branches and final handoff | In progress | Local-only benchmark prerequisite and optimization branch |
 
 ## Review, stabilization, and PR preparation
 
